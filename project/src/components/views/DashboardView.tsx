@@ -3,12 +3,12 @@ import { Package, Scan, Clock, TrendingUp, AlertTriangle, CheckCircle, Hash, Shi
 import { useNotion } from '../../contexts/NotionContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HelpTooltip } from '../common/HelpTooltip';
-import { format } from 'date-fns';
-import { es, enUS } from 'date-fns/locale';
+
+
 
 export const DashboardView: React.FC = () => {
   const { items, scanHistory, isLoading, refreshDatabase, getItemsNeedingAttention, activeDisplayConfig } = useNotion();
-  const { t, language } = useLanguage();
+  const { t} = useLanguage();
 
   // ✅ SOLUCIÓN: Función helper para convertir valores a string de forma segura
   const safeStringValue = (value: any): string => {
@@ -266,9 +266,7 @@ export const DashboardView: React.FC = () => {
 
   const recentActivity = scanHistory.slice(0, 5);
 
-  const getDateLocale = () => {
-    return language === 'es-MX' ? es : enUS;
-  };
+
 
   // ✅ FUNCIÓN ACTUALIZADA: Usar el nuevo formato de fecha para actividad reciente
   const formatDate = (dateString: string) => {
@@ -378,7 +376,7 @@ export const DashboardView: React.FC = () => {
 
     return (
       <div className="space-y-3 sm:space-y-4">
-        {itemsNeedingAttention.slice(0, 5).map((item, index) => (
+        {itemsNeedingAttention.slice(0, 5).map((item) => (
           <div key={item.id} className="flex items-start space-x-3 p-3 bg-orange-50/50 dark:bg-orange-900/20 rounded-lg border border-orange-200/50 dark:border-orange-700/50">
             {displayConfig.showAttentionIcons && (
               <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400 mt-1 flex-shrink-0" />
@@ -446,7 +444,7 @@ export const DashboardView: React.FC = () => {
   const renderDefaultAttentionItems = () => {
     return (
       <div className="space-y-3 sm:space-y-4">
-        {itemsNeedingAttention.slice(0, 5).map((item, index) => (
+        {itemsNeedingAttention.slice(0, 5).map((item) => (
           <div key={item.id} className="flex items-start space-x-3 p-3 bg-orange-50/50 dark:bg-orange-900/20 rounded-lg border border-orange-200/50 dark:border-orange-700/50">
             <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400 mt-1 flex-shrink-0" />
             <div className="flex-1 min-w-0">
@@ -595,7 +593,7 @@ export const DashboardView: React.FC = () => {
             
             {recentActivity.length > 0 ? (
               <div className="space-y-3 sm:space-y-4">
-                {recentActivity.map((activity, index) => (
+                {recentActivity.map((activity) => (
                   <div key={activity.id} className="flex items-start space-x-3 p-3 bg-gray-50/50 dark:bg-gray-700/50 rounded-lg">
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
                     <div className="flex-1 min-w-0">

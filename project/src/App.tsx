@@ -36,9 +36,9 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
       <Header currentView={currentView} onViewChange={setCurrentView} />
-      <main>
+      <main className="bg-white dark:bg-gray-900 transition-colors duration-200 min-h-[calc(100vh-64px)]">
         {renderCurrentView()}
       </main>
     </div>

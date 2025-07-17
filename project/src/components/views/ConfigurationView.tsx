@@ -35,10 +35,10 @@ const AttentionSelectField: React.FC<{
   }, [fieldName, getFieldOptions]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center space-x-2">
+  return (
+    <div className="flex items-center space-x-2">
         <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
-        <span className="text-sm text-gray-500">Cargando opciones...</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">Cargando opciones...</span>
       </div>
     );
   }
@@ -57,7 +57,7 @@ const AttentionSelectField: React.FC<{
             <option key={option} value={option}>{option}</option>
           ))}
         </select>
-        <div className="text-xs text-gray-500">
+        <div className="text-xs text-gray-500 dark:text-gray-400">
           Opciones disponibles: {options.join(', ')}
         </div>
       </div>
@@ -75,7 +75,7 @@ const AttentionSelectField: React.FC<{
         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-sm"
         placeholder="Ingresar valor..."
       />
-      <div className="text-xs text-gray-500">
+      <div className="text-xs text-gray-500 dark:text-gray-400">
         No se encontraron opciones predefinidas para este campo
       </div>
     </div>
@@ -152,7 +152,7 @@ const NotionSelectField: React.FC<{
       value={typeof value === 'string' ? value : ''}
       onChange={e => onChange(e.target.value)}
       disabled={disabled}
-      className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
+      className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800 dark:border-gray-700 text-xs sm:text-sm dark:text-gray-100"
     >
       <option value="">Seleccionar opción...</option>
       {options.map(opt => (
@@ -597,140 +597,132 @@ export const ConfigurationView: React.FC = () => {
   };
 
 
-  // Reemplazar renderScanFieldValue para usar NotionSelectField en select, multi_select, status y relation
-  const renderScanFieldValue = (field: any, index: number) => {
-    switch (field.fieldType) {
-      case 'files':
-        return (
-          <input
-            type="text"
-            placeholder="Pega aquí la URL pública del archivo (Drive, Dropbox, etc.)"
-            value={field.value && Array.isArray(field.value) ? field.value.map((f: { url: string }) => f.url).join(', ') : (field.value?.url || '')}
-            onChange={e => {
-              // Permitir múltiples URLs separadas por coma
-              const urls = e.target.value.split(',').map(u => u.trim()).filter(u => u);
-              const fileObjs = urls.map(url => ({ name: url.split('/').pop() || 'Archivo', url }));
-              updateScanTargetField(index, { value: fileObjs });
-            }}
-            className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-            disabled={!field.enabled}
-          />
-        );
-      case 'checkbox':
-        return (
+const renderScanFieldValue = (field: any, index: number) => {
+  switch (field.fieldType) {
+    case 'files':
+      return (
+        <input
+          type="text"
+          placeholder="Pega aquí la URL pública del archivo (Drive, Dropbox, etc.)"
+          value={field.value && Array.isArray(field.value) ? field.value.map((f: { url: string }) => f.url).join(', ') : (field.value?.url || '')}
+          onChange={e => {
+            const urls = e.target.value.split(',').map(u => u.trim()).filter(u => u);
+            const fileObjs = urls.map(url => ({ name: url.split('/').pop() || 'Archivo', url }));
+            updateScanTargetField(index, { value: fileObjs });
+          }}
+          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+          disabled={!field.enabled}
+        />
+      );
+    case 'checkbox':
+      return (
+        <select
+          value={field.value ? 'true' : 'false'}
+          onChange={(e) => updateScanTargetField(index, { value: e.target.value === 'true' })}
+          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white"
+          disabled={!field.enabled}
+        >
+          <option value="true">{t('common.checked')}</option>
+          <option value="false">{t('common.unchecked')}</option>
+        </select>
+      );
+    case 'date':
+      const dateOptions = getDateOptions(field.fieldName);
+      return (
+        <div className="space-y-2">
           <select
-            value={field.value ? 'true' : 'false'}
-            onChange={(e) => updateScanTargetField(index, { value: e.target.value === 'true' })}
-            className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
+            value={field.value}
+            onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
+            className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white"
             disabled={!field.enabled}
           >
-            <option value="true">{t('common.checked')}</option>
-            <option value="false">{t('common.unchecked')}</option>
+            {dateOptions.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
-        );
-        
-      case 'date':
-        const dateOptions = getDateOptions(field.fieldName);
-        return (
-          <div className="space-y-2">
-            <select
-              value={field.value}
-              onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
-              className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
+          {field.value === '__CUSTOM_DATE__' && (
+            <input
+              type="date"
+              value={field.customDate || ''}
+              onChange={(e) => updateScanTargetField(index, { customDate: e.target.value })}
+              className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
               disabled={!field.enabled}
-            >
-              {dateOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            {field.value === '__CUSTOM_DATE__' && (
-              <input
-                type="date"
-                value={field.customDate || ''}
-                onChange={(e) => updateScanTargetField(index, { customDate: e.target.value })}
-                className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-                disabled={!field.enabled}
-              />
-            )}
-          </div>
-        );
-
-      case 'select':
-      case 'multi_select':
-      case 'status':
-      case 'relation':
-        return (
-          <NotionSelectField
-            field={field}
-            value={field.value}
-            onChange={val => updateScanTargetField(index, { value: val })}
-            disabled={!field.enabled}
-            database={database}
-          />
-        );
-
-      case 'number':
-        return (
-          <input
-            type="number"
-            value={field.value}
-            onChange={(e) => updateScanTargetField(index, { value: parseFloat(e.target.value) || 0 })}
-            className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-            disabled={!field.enabled}
-          />
-        );
-
-      case 'url':
-        return (
-          <input
-            type="url"
-            value={field.value}
-            onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
-            className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-            placeholder="https://..."
-            disabled={!field.enabled}
-          />
-        );
-
-      case 'email':
-        return (
-          <input
-            type="email"
-            value={field.value}
-            onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
-            className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-            placeholder="email@example.com"
-            disabled={!field.enabled}
-          />
-        );
-
-      case 'phone_number':
-        return (
-          <input
-            type="tel"
-            value={field.value}
-            onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
-            className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-            placeholder="+1 (555) 123-4567"
-            disabled={!field.enabled}
-          />
-        );
-
-      default:
-        return (
-          <input
-            type="text"
-            value={field.value}
-            onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
-            className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-            placeholder={t('common.enterValue')}
-            disabled={!field.enabled}
-          />
-        );
-    }
-  };
+            />
+          )}
+        </div>
+      );
+    case 'select':
+    case 'multi_select':
+    case 'status':
+    case 'relation':
+      return (
+        <NotionSelectField
+          field={field}
+          value={field.value}
+          onChange={val => updateScanTargetField(index, { value: val })}
+          disabled={!field.enabled}
+          database={database}
+          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white"
+        />
+      );
+    case 'number':
+      return (
+        <input
+          type="number"
+          value={field.value}
+          onChange={(e) => updateScanTargetField(index, { value: parseFloat(e.target.value) || 0 })}
+          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+          disabled={!field.enabled}
+        />
+      );
+    case 'url':
+      return (
+        <input
+          type="url"
+          value={field.value}
+          onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
+          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+          placeholder="https://..."
+          disabled={!field.enabled}
+        />
+      );
+    case 'email':
+      return (
+        <input
+          type="email"
+          value={field.value}
+          onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
+          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+          placeholder="email@example.com"
+          disabled={!field.enabled}
+        />
+      );
+    case 'phone_number':
+      return (
+        <input
+          type="tel"
+          value={field.value}
+          onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
+          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+          placeholder="+1 (555) 123-4567"
+          disabled={!field.enabled}
+        />
+      );
+    default:
+      return (
+        <input
+          type="text"
+          value={field.value}
+          onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
+          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-400"
+          placeholder={t('common.enterValue')}
+          disabled={!field.enabled}
+        />
+      );
+  }
+};
 
   const getFieldIcon = (fieldType: string) => {
     switch (fieldType) {
@@ -774,27 +766,27 @@ export const ConfigurationView: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-3 sm:p-4 lg:p-6">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 p-3 sm:p-4 lg:p-6">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 lg:mb-8 space-y-4 sm:space-y-0">
           <div className="flex items-start space-x-3">
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{t('config.title')}</h1>
-              <p className="text-gray-600 text-sm sm:text-base">{t('config.subtitle')}</p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white drop-shadow dark:drop-shadow-lg mb-2">{t('config.title')}</h1>
+              <p className="text-gray-600 dark:text-gray-200 dark:font-medium text-sm sm:text-base">{t('config.subtitle')}</p>
             </div>
             <HelpTooltip content={t('help.config.overview')} />
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white/80 backdrop-blur-md rounded-xl lg:rounded-2xl border border-gray-200/50 shadow-sm mb-6">
-          <div className="flex border-b border-gray-200/50">
+        <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md rounded-xl lg:rounded-2xl border border-gray-200/50 dark:border-gray-700/70 shadow-sm mb-6">
+          <div className="flex border-b border-gray-200/50 dark:border-gray-700/70">
             <button
               onClick={() => setActiveTab('scan')}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 ${
                 activeTab === 'scan'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50 dark:bg-blue-900/40 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               <div className="flex items-center justify-center space-x-2">
@@ -807,8 +799,8 @@ export const ConfigurationView: React.FC = () => {
               onClick={() => setActiveTab('display')}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 ${
                 activeTab === 'display'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50 dark:bg-blue-900/40 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               <div className="flex items-center justify-center space-x-2">
@@ -821,8 +813,8 @@ export const ConfigurationView: React.FC = () => {
               onClick={() => setActiveTab('attention')}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 ${
                 activeTab === 'attention'
-                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50 dark:bg-blue-900/40 dark:text-blue-300'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
               }`}
             >
               <div className="flex items-center justify-center space-x-2">
@@ -840,8 +832,8 @@ export const ConfigurationView: React.FC = () => {
             {/* Scan Configuration Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Configuraciones de Escaneo</h2>
-                <p className="text-gray-600 text-sm">Gestiona las configuraciones para actualizar campos automáticamente</p>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Configuraciones de Escaneo</h2>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">Gestiona las configuraciones para actualizar campos automáticamente</p>
               </div>
               {!isCreatingScan && !editingScanConfig && (
                 <button
@@ -856,10 +848,10 @@ export const ConfigurationView: React.FC = () => {
 
             {/* Scan Configuration Form */}
             {(isCreatingScan || editingScanConfig) && (
-              <div className="bg-white/80 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 shadow-sm mb-6 lg:mb-8">
+              <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/70 shadow-sm mb-6 lg:mb-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 space-y-3 sm:space-y-0">
                   <div className="flex items-center space-x-3">
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                       {editingScanConfig ? t('config.editConfiguration') : t('config.createConfiguration')}
                     </h2>
                     <HelpTooltip content={t('help.config.form')} />
@@ -886,7 +878,7 @@ export const ConfigurationView: React.FC = () => {
                   <div className="xl:col-span-1 space-y-4">
                     <div>
                       <div className="flex items-center space-x-2 mb-2">
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                           {t('config.configName')}
                         </label>
                         <HelpTooltip content={t('help.config.configName')} />
@@ -895,14 +887,14 @@ export const ConfigurationView: React.FC = () => {
                         type="text"
                         value={scanFormData.name || ''}
                         onChange={(e) => setScanFormData({ ...scanFormData, name: e.target.value })}
-                        className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 transition-all duration-200 text-sm sm:text-base"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-700 rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 transition-all duration-200 text-sm sm:text-base"
                         placeholder={t('config.configNamePlaceholder')}
                       />
                     </div>
 
                     <div>
                       <div className="flex items-center space-x-2 mb-2">
-                        <label className="block text-sm font-medium text-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                           {t('config.searchField')}
                         </label>
                         <HelpTooltip content={t('help.config.searchField')} />
@@ -910,7 +902,7 @@ export const ConfigurationView: React.FC = () => {
                       <select
                         value={scanFormData.searchField || ''}
                         onChange={(e) => setScanFormData({ ...scanFormData, searchField: e.target.value })}
-                        className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 transition-all duration-200 text-sm sm:text-base"
+                        className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-700 rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-gray-900 dark:text-white transition-all duration-200 text-sm sm:text-base"
                       >
                         {availableFields.map(field => (
                           <option key={field} value={field}>{field}</option>
@@ -927,7 +919,7 @@ export const ConfigurationView: React.FC = () => {
                             onChange={(e) => setScanFormData({ ...scanFormData, autoSave: e.target.checked })}
                             className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                           />
-                          <span className="text-sm font-medium text-gray-700">{t('config.autoSave')}</span>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{t('config.autoSave')}</span>
                         </label>
                         <HelpTooltip content={t('help.config.autoSave')} />
                       </div>
@@ -936,12 +928,12 @@ export const ConfigurationView: React.FC = () => {
 
                   <div className="xl:col-span-2">
                     <div className="flex items-center space-x-2 mb-4">
-                      <h3 className="text-base sm:text-lg font-medium text-gray-900">{t('config.targetFields')}</h3>
+                      <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white">{t('config.targetFields')}</h3>
                       <HelpTooltip content={t('help.config.targetFields')} />
                     </div>
                     <div className="space-y-2 sm:space-y-3 max-h-80 sm:max-h-96 overflow-y-auto">
                       {scanFormData.targetFields?.map((field, index) => (
-                        <div key={field.fieldName} className="flex flex-col space-y-3 p-3 sm:p-4 bg-gray-50/50 rounded-lg border border-gray-200/50">
+                        <div key={field.fieldName} className="flex flex-col space-y-3 p-3 sm:p-4 bg-gray-50/50 dark:bg-gray-900/70 rounded-lg border border-gray-200/50 dark:border-gray-700/70">
                           <div className="flex items-center space-x-3">
                             <input
                               type="checkbox"
@@ -949,20 +941,20 @@ export const ConfigurationView: React.FC = () => {
                               onChange={(e) => updateScanTargetField(index, { enabled: e.target.checked })}
                               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
                             />
-                            
+
                             <div className="flex items-center space-x-2 flex-1 min-w-0">
                               {getFieldIcon(field.fieldType)}
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">{field.fieldName}</p>
-                                <p className="text-xs text-gray-500 capitalize">{field.fieldType.replace('_', ' ')}</p>
+                                <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">{field.fieldName}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-300 capitalize">{field.fieldType.replace('_', ' ')}</p>
                               </div>
                             </div>
                           </div>
-                          
+
                           {field.enabled && (
                             <div className="ml-7">
                               <div className="flex items-center space-x-2 mb-2">
-                                <label className="text-xs font-medium text-gray-700">
+                                <label className="text-xs font-medium text-gray-700 dark:text-gray-200">
                                   {t('config.fieldValue')}:
                                 </label>
                                 <HelpTooltip content={t('help.config.fieldValue')} />
@@ -976,18 +968,19 @@ export const ConfigurationView: React.FC = () => {
                   </div>
                 </div>
               </div>
-            )}
+           
+ )}
 
             {/* Existing Scan Configurations */}
             {!isCreatingScan && !editingScanConfig && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                 {scanConfigurations.map((config) => (
-                  <div key={config.id} className="bg-white/80 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 shadow-sm hover:shadow-md transition-all duration-200">
+                  <div key={config.id} className="bg-white/80 dark:bg-gray-900/90 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/70 shadow-sm hover:shadow-md transition-all duration-200">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-start space-x-2 flex-1 min-w-0">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-1 truncate">{config.name}</h3>
-                          <p className="text-xs sm:text-sm text-gray-600 truncate">{t('config.searchBy')} {config.searchField}</p>
+                          <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-1 truncate">{config.name}</h3>
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 truncate">{t('config.searchBy')} {config.searchField}</p>
                         </div>
                         <HelpTooltip content={t('help.config.configCard')} />
                       </div>
@@ -995,13 +988,13 @@ export const ConfigurationView: React.FC = () => {
                       <div className="flex items-center space-x-1 flex-shrink-0">
                         <button
                           onClick={() => handleStartEditScan(config)}
-                          className="p-1.5 sm:p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                          className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-200"
                         >
                           <Edit2 className="w-3 h-3 sm:w-4 sm:h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteScan(config.id)}
-                          className="p-1.5 sm:p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+                          className="p-1.5 sm:p-2 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200"
                         >
                           <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                         </button>
@@ -1009,7 +1002,7 @@ export const ConfigurationView: React.FC = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <p className="text-xs sm:text-sm text-gray-600">
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">
                         <span className="font-medium">{t('config.targetFieldsCount')}</span>
                       </p>
                       <div className="flex flex-wrap gap-1">
@@ -1017,20 +1010,20 @@ export const ConfigurationView: React.FC = () => {
                           .filter(field => field.enabled)
                           .slice(0, 3)
                           .map((field, index) => (
-                            <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
                               {field.fieldName}
                             </span>
                           ))}
                         {config.targetFields.filter(field => field.enabled).length > 3 && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100">
                             +{config.targetFields.filter(field => field.enabled).length - 3} {t('config.moreFields')}
                           </span>
                         )}
                       </div>
 
                       {config.autoSave && (
-                        <div className="flex items-center space-x-1 text-xs text-green-600 mt-2">
-                          <div className="w-2 h-2 bg-green-500 rounded-full" />
+                        <div className="flex items-center space-x-1 text-xs text-green-600 dark:text-green-400 mt-2">
+                          <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full" />
                           <span>{t('config.autoSaveEnabled')}</span>
                         </div>
                       )}
@@ -1041,8 +1034,8 @@ export const ConfigurationView: React.FC = () => {
                 {scanConfigurations.length === 0 && (
                   <div className="col-span-full text-center py-8 sm:py-12">
                     <Settings className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-gray-400" />
-                    <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">{t('config.noConfigurations')}</h3>
-                    <p className="text-gray-600 mb-4 text-sm sm:text-base">{t('config.createFirst')}</p>
+                    <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-2">{t('config.noConfigurations')}</h3>
+                    <p className="text-gray-600 dark:text-gray-300 mb-4 text-sm sm:text-base">{t('config.createFirst')}</p>
                     <button
                       onClick={handleStartCreateScan}
                       className="inline-flex items-center space-x-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 text-sm sm:text-base"
@@ -1062,8 +1055,8 @@ export const ConfigurationView: React.FC = () => {
             {/* Display Configuration Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">
               <div>
-                <h2 className="text-xl font-bold text-gray-900">Configuración de Vista</h2>
-                <p className="text-gray-600 text-sm">Personaliza cómo se muestran los artículos en el escaneo y en "Requiere Atención"</p>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Configuración de Vista</h2>
+                <p className="text-gray-600 dark:text-gray-300 text-sm">Personaliza cómo se muestran los artículos en el escaneo y en "Requiere Atención"</p>
               </div>
               {!isCreatingDisplay && !editingDisplayConfig && (
                 <button
@@ -1078,10 +1071,10 @@ export const ConfigurationView: React.FC = () => {
 
             {/* Active Configuration Indicator */}
             {activeDisplayConfig && !isCreatingDisplay && !editingDisplayConfig && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg p-4 mb-6">
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <span className="font-medium text-green-800">
+                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-300" />
+                  <span className="font-medium text-green-800 dark:text-green-100">
                     Configuración Activa: {activeDisplayConfig.name}
                   </span>
                 </div>
@@ -1090,9 +1083,9 @@ export const ConfigurationView: React.FC = () => {
 
             {/* Display Configuration Form */}
             {(isCreatingDisplay || editingDisplayConfig) && (
-              <div className="bg-white/80 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 shadow-sm mb-6">
+              <div className="bg-white/80 dark:bg-gray-900/90 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/80 shadow-sm mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 space-y-3 sm:space-y-0">
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                     {editingDisplayConfig ? 'Editar Vista' : 'Crear Nueva Vista'}
                   </h2>
                   <div className="flex items-center space-x-2">
@@ -1117,26 +1110,26 @@ export const ConfigurationView: React.FC = () => {
                   {/* Configuration Settings */}
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                         Nombre de la Vista
                       </label>
                       <input
                         type="text"
                         value={displayFormData.name || ''}
                         onChange={(e) => setDisplayFormData({ ...displayFormData, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-sm text-gray-900 dark:text-white"
                         placeholder="ej., Vista Completa"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                         Layout Principal
                       </label>
                       <select
                         value={displayFormData.layout || 'grid'}
                         onChange={(e) => setDisplayFormData({ ...displayFormData, layout: e.target.value as 'grid' | 'list' | 'compact' })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-sm text-gray-900 dark:text-white"
                       >
                         <option value="grid">Cuadrícula</option>
                         <option value="list">Lista</option>
@@ -1146,13 +1139,13 @@ export const ConfigurationView: React.FC = () => {
 
                     {/* ✅ NUEVO: Layout para "Requiere Atención" */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                         Layout "Requiere Atención"
                       </label>
                       <select
                         value={displayFormData.attentionLayout || 'detailed'}
                         onChange={(e) => setDisplayFormData({ ...displayFormData, attentionLayout: e.target.value as 'badges' | 'detailed' | 'minimal' })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-sm text-gray-900 dark:text-white"
                       >
                         <option value="detailed">Detallado</option>
                         <option value="badges">Solo Badges</option>
@@ -1168,7 +1161,7 @@ export const ConfigurationView: React.FC = () => {
                           onChange={(e) => setDisplayFormData({ ...displayFormData, showMetadata: e.target.checked })}
                           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
-                        <span className="text-sm font-medium text-gray-700">Mostrar Metadatos</span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Mostrar Metadatos</span>
                       </label>
 
                       {/* ✅ NUEVO: Opción para iconos en "Requiere Atención" */}
@@ -1179,19 +1172,19 @@ export const ConfigurationView: React.FC = () => {
                           onChange={(e) => setDisplayFormData({ ...displayFormData, showAttentionIcons: e.target.checked })}
                           className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
-                        <span className="text-sm font-medium text-gray-700">Iconos en "Requiere Atención"</span>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Iconos en "Requiere Atención"</span>
                       </label>
                     </div>
                   </div>
 
                   {/* Fields Configuration */}
                   <div className="lg:col-span-2">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Configuración de Campos</h3>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Configuración de Campos</h3>
                     <div className="space-y-3 max-h-96 overflow-y-auto">
                       {displayFormData.displayFields?.map((field, index) => {
                         const IconComponent = getIconComponent(field.icon || 'Info');
                         return (
-                          <div key={field.fieldName} className="p-4 bg-gray-50/50 rounded-lg border border-gray-200/50">
+                          <div key={field.fieldName} className="p-4 bg-gray-50/50 dark:bg-gray-800/80 rounded-lg border border-gray-200/50 dark:border-gray-700/80">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {/* Field Info and Enable */}
                               <div className="space-y-3">
@@ -1203,35 +1196,35 @@ export const ConfigurationView: React.FC = () => {
                                     className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                   />
                                   <div className="flex items-center space-x-2 flex-1">
-                                    <IconComponent className="w-4 h-4 text-gray-500" />
+                                    <IconComponent className="w-4 h-4 text-gray-500 dark:text-gray-300" />
                                     <div>
-                                      <p className="text-sm font-medium text-gray-900">{field.fieldName}</p>
-                                      <p className="text-xs text-gray-500">{field.fieldType}</p>
+                                      <p className="text-sm font-medium text-gray-900 dark:text-white">{field.fieldName}</p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-300">{field.fieldType}</p>
                                     </div>
                                   </div>
                                 </div>
 
                                 <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
                                     Nombre a Mostrar
                                   </label>
                                   <input
                                     type="text"
                                     value={field.displayName}
                                     onChange={(e) => updateDisplayField(index, { displayName: e.target.value })}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                                    className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white/50 dark:bg-gray-900/70 text-gray-900 dark:text-white"
                                     disabled={!field.enabled}
                                   />
                                 </div>
 
                                 <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
                                     Icono
                                   </label>
                                   <select
                                     value={field.icon || 'Info'}
                                     onChange={(e) => updateDisplayField(index, { icon: e.target.value })}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                                    className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white/50 dark:bg-gray-900/70 text-gray-900 dark:text-white"
                                     disabled={!field.enabled}
                                   >
                                     {iconOptions.map(option => (
@@ -1244,14 +1237,14 @@ export const ConfigurationView: React.FC = () => {
                               {/* Display Options */}
                               <div className="space-y-3">
                                 <div>
-                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
                                     Orden
                                   </label>
                                   <input
                                     type="number"
                                     value={field.order}
                                     onChange={(e) => updateDisplayField(index, { order: parseInt(e.target.value) || 1 })}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
+                                    className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white/50 dark:bg-gray-900/70 text-gray-900 dark:text-white"
                                     disabled={!field.enabled}
                                     min="1"
                                   />
@@ -1266,7 +1259,7 @@ export const ConfigurationView: React.FC = () => {
                                       className="w-3 h-3 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                       disabled={!field.enabled}
                                     />
-                                    <span className="text-xs text-gray-700">Mostrar en Resumen</span>
+                                    <span className="text-xs text-gray-700 dark:text-gray-200">Mostrar en Resumen</span>
                                   </label>
 
                                   {/* ✅ NUEVO: Opción para mostrar en "Requiere Atención" */}
@@ -1278,7 +1271,7 @@ export const ConfigurationView: React.FC = () => {
                                       className="w-3 h-3 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
                                       disabled={!field.enabled}
                                     />
-                                    <span className="text-xs text-gray-700">Mostrar en "Requiere Atención"</span>
+                                    <span className="text-xs text-gray-700 dark:text-gray-200">Mostrar en "Requiere Atención"</span>
                                   </label>
                                 </div>
                               </div>
@@ -1296,21 +1289,21 @@ export const ConfigurationView: React.FC = () => {
             {!isCreatingDisplay && !editingDisplayConfig && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {displayConfigurations.map((config) => (
-                  <div key={config.id} className={`bg-white/80 backdrop-blur-md rounded-xl p-6 border shadow-sm hover:shadow-md transition-all duration-200 ${
-                    activeDisplayConfig?.id === config.id ? 'border-green-300 bg-green-50/50' : 'border-gray-200/50'
+                  <div key={config.id} className={`bg-white/80 dark:bg-gray-900/90 backdrop-blur-md rounded-xl p-6 border shadow-sm hover:shadow-md transition-all duration-200 ${
+                    activeDisplayConfig?.id === config.id ? 'border-green-300 bg-green-50/50 dark:bg-green-900/40 dark:border-green-700' : 'border-gray-200/50 dark:border-gray-700/80'
                   }`}>
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h3 className="text-lg font-bold text-gray-900 mb-1">{config.name}</h3>
-                        <p className="text-sm text-gray-600">Layout: {config.layout}</p>
-                        <p className="text-sm text-gray-600">Atención: {config.attentionLayout}</p>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{config.name}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Layout: {config.layout}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Atención: {config.attentionLayout}</p>
                       </div>
                       
                       <div className="flex items-center space-x-1">
                         {activeDisplayConfig?.id !== config.id && (
                           <button
                             onClick={() => handleActivateDisplay(config.id)}
-                            className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200"
+                            className="p-2 text-gray-600 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-all duration-200"
                             title="Activar configuración"
                           >
                             <CheckCircle className="w-4 h-4" />
@@ -1318,13 +1311,13 @@ export const ConfigurationView: React.FC = () => {
                         )}
                         <button
                           onClick={() => handleStartEditDisplay(config)}
-                          className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
+                          className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-200"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteDisplay(config.id)}
-                          className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
+                          className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -1332,15 +1325,15 @@ export const ConfigurationView: React.FC = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
                         <span className="font-medium">Campos habilitados:</span> {config.displayFields.filter(f => f.enabled).length}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
                         <span className="font-medium">En "Requiere Atención":</span> {config.displayFields.filter(f => f.showInAttention).length}
                       </p>
                       
                       {activeDisplayConfig?.id === config.id && (
-                        <div className="flex items-center space-x-1 text-xs text-green-600 mt-2">
+                        <div className="flex items-center space-x-1 text-xs text-green-600 dark:text-green-300 mt-2">
                           <CheckCircle className="w-3 h-3" />
                           <span>Configuración Activa</span>
                         </div>
@@ -1352,8 +1345,8 @@ export const ConfigurationView: React.FC = () => {
                 {displayConfigurations.length === 0 && (
                   <div className="col-span-full text-center py-12">
                     <Eye className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay configuraciones de vista</h3>
-                    <p className="text-gray-600 mb-4">Crea tu primera configuración para personalizar la vista</p>
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay configuraciones de vista</h3>
+                    <p className="text-gray-600 dark:text-gray-300 mb-4">Crea tu primera configuración para personalizar la vista</p>
                     <button
                       onClick={handleStartCreateDisplay}
                       className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-blue-600 text-white rounded-lg hover:from-green-600 hover:to-blue-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200"
@@ -1368,340 +1361,342 @@ export const ConfigurationView: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'attention' && (
-          <div>
-            {/* Attention Configuration Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Criterios de Atención</h2>
-                <p className="text-gray-600 text-sm">Define qué artículos aparecerán en "Requiere Atención"</p>
-              </div>
-              {!isCreatingAttention && !editingAttentionConfig && (
-                <button
-                  onClick={handleStartCreateAttention}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200 text-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Nuevos Criterios</span>
-                </button>
-              )}
+{activeTab === 'attention' && (
+  <div>
+    {/* Attention Configuration Header */}
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 space-y-4 sm:space-y-0">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Criterios de Atención</h2>
+        <p className="text-gray-600 dark:text-gray-300 text-sm">Define qué artículos aparecerán en "Requiere Atención"</p>
+      </div>
+      {!isCreatingAttention && !editingAttentionConfig && (
+        <button
+          onClick={handleStartCreateAttention}
+          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200 text-sm"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Nuevos Criterios</span>
+        </button>
+      )}
+    </div>
+
+    {/* Active Configuration Indicator */}
+    {activeAttentionConfig && !isCreatingAttention && !editingAttentionConfig && (
+      <div className="bg-orange-50 dark:bg-orange-900/40 border border-orange-200 dark:border-orange-700 rounded-lg p-4 mb-6">
+        <div className="flex items-center space-x-2">
+          <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-300" />
+          <span className="font-medium text-orange-800 dark:text-orange-200">
+            Criterios Activos: {activeAttentionConfig.name}
+          </span>
+          <span className="text-sm text-orange-600 dark:text-orange-300">
+            ({activeAttentionConfig.operator} - {activeAttentionConfig.criteria.filter(c => c.enabled).length} criterios)
+          </span>
+        </div>
+      </div>
+    )}
+
+    {/* Attention Configuration Form */}
+    {(isCreatingAttention || editingAttentionConfig) && (
+      <div className="bg-white/80 dark:bg-gray-900/90 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/80 shadow-sm mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 space-y-3 sm:space-y-0">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+            {editingAttentionConfig ? 'Editar Criterios' : 'Crear Nuevos Criterios'}
+          </h2>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleSaveAttention}
+              className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 text-sm"
+            >
+              <Save className="w-4 h-4" />
+              <span>Guardar</span>
+            </button>
+            <button
+              onClick={handleCancelAttention}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 text-sm"
+            >
+              <X className="w-4 h-4" />
+              <span>Cancelar</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Configuration Settings */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                Nombre de los Criterios
+              </label>
+              <input
+                type="text"
+                value={attentionFormData.name || ''}
+                onChange={(e) => setAttentionFormData({ ...attentionFormData, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-sm text-gray-900 dark:text-white"
+                placeholder="ej., Artículos Críticos"
+              />
             </div>
 
-            {/* Active Configuration Indicator */}
-            {activeAttentionConfig && !isCreatingAttention && !editingAttentionConfig && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="w-5 h-5 text-orange-600" />
-                  <span className="font-medium text-orange-800">
-                    Criterios Activos: {activeAttentionConfig.name}
-                  </span>
-                  <span className="text-sm text-orange-600">
-                    ({activeAttentionConfig.operator} - {activeAttentionConfig.criteria.filter(c => c.enabled).length} criterios)
-                  </span>
-                </div>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                Operador Lógico
+              </label>
+              <select
+                value={attentionFormData.operator || 'OR'}
+                onChange={(e) => setAttentionFormData({ ...attentionFormData, operator: e.target.value as 'AND' | 'OR' })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-sm text-gray-900 dark:text-white"
+              >
+                <option value="OR">OR (cualquier criterio)</option>
+                <option value="AND">AND (todos los criterios)</option>
+              </select>
+            </div>
 
-            {/* Attention Configuration Form */}
-            {(isCreatingAttention || editingAttentionConfig) && (
-              <div className="bg-white/80 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 shadow-sm mb-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 space-y-3 sm:space-y-0">
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">
-                    {editingAttentionConfig ? 'Editar Criterios' : 'Crear Nuevos Criterios'}
-                  </h2>
-                  <div className="flex items-center space-x-2">
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={attentionFormData.enabled || false}
+                  onChange={(e) => setAttentionFormData({ ...attentionFormData, enabled: e.target.checked })}
+                  className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Criterios Habilitados</span>
+              </label>
+            </div>
+
+            <button
+              onClick={addAttentionCriterion}
+              className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-dashed border-gray-300 dark:border-orange-700 rounded-lg hover:border-orange-400 dark:hover:border-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/40 transition-all duration-200 text-sm text-gray-900 dark:text-white"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Agregar Criterio</span>
+            </button>
+          </div>
+
+          {/* Criteria Configuration */}
+          <div className="lg:col-span-2">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Criterios de Atención</h3>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {attentionFormData.criteria?.map((criterion, index) => (
+                <div key={criterion.id} className="p-4 bg-orange-50/50 dark:bg-orange-900/70 rounded-lg border border-orange-200/50 dark:border-orange-700/80">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={criterion.enabled}
+                        onChange={(e) => updateAttentionCriterion(index, { enabled: e.target.checked })}
+                        className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                      />
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        Criterio {index + 1}
+                      </span>
+                    </div>
                     <button
-                      onClick={handleSaveAttention}
-                      className="flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 text-sm"
+                      onClick={() => removeAttentionCriterion(index)}
+                      className="p-1 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"
                     >
-                      <Save className="w-4 h-4" />
-                      <span>Guardar</span>
-                    </button>
-                    <button
-                      onClick={handleCancelAttention}
-                      className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 text-sm"
-                    >
-                      <X className="w-4 h-4" />
-                      <span>Cancelar</span>
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Configuration Settings */}
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nombre de los Criterios
-                      </label>
-                      <input
-                        type="text"
-                        value={attentionFormData.name || ''}
-                        onChange={(e) => setAttentionFormData({ ...attentionFormData, name: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-sm"
-                        placeholder="ej., Artículos Críticos"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Operador Lógico
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
+                        Campo
                       </label>
                       <select
-                        value={attentionFormData.operator || 'OR'}
-                        onChange={(e) => setAttentionFormData({ ...attentionFormData, operator: e.target.value as 'AND' | 'OR' })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-sm"
+                        value={criterion.fieldName}
+                        onChange={(e) => {
+                          const fieldType = database?.properties[e.target.value]?.type || 'rich_text';
+                          updateAttentionCriterion(index, { 
+                            fieldName: e.target.value,
+                            fieldType,
+                            value: '' // Reset value when field changes
+                          });
+                        }}
+                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white/50 dark:bg-orange-950/70 text-gray-900 dark:text-white"
+                        disabled={!criterion.enabled}
                       >
-                        <option value="OR">OR (cualquier criterio)</option>
-                        <option value="AND">AND (todos los criterios)</option>
+                        {availableFields.map(field => (
+                          <option key={field} value={field}>{field}</option>
+                        ))}
                       </select>
                     </div>
 
                     <div>
-                      <label className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          checked={attentionFormData.enabled || false}
-                          onChange={(e) => setAttentionFormData({ ...attentionFormData, enabled: e.target.checked })}
-                          className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                        />
-                        <span className="text-sm font-medium text-gray-700">Criterios Habilitados</span>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
+                        Condición
                       </label>
+                      <select
+                        value={criterion.condition}
+                        onChange={(e) => updateAttentionCriterion(index, { condition: e.target.value as any })}
+                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white/50 dark:bg-orange-950/70 text-gray-900 dark:text-white"
+                        disabled={!criterion.enabled}
+                      >
+                        <option value="equals">Igual a</option>
+                        <option value="not_equals">Diferente de</option>
+                        <option value="empty">Está vacío</option>
+                        <option value="not_empty">No está vacío</option>
+                        <option value="contains">Contiene</option>
+                        <option value="not_contains">No contiene</option>
+                        <option value="less_than">Menor que</option>
+                        <option value="greater_than">Mayor que</option>
+                        <option value="is_true">Es verdadero</option>
+                        <option value="is_false">Es falso</option>
+                      </select>
                     </div>
 
-                    <button
-                      onClick={addAttentionCriterion}
-                      className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg hover:border-orange-400 hover:bg-orange-50 transition-all duration-200 text-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Agregar Criterio</span>
-                    </button>
+                    {/* Value field - only show if condition requires a value */}
+                    {!['empty', 'not_empty', 'is_true', 'is_false'].includes(criterion.condition) && (
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
+                          Valor
+                        </label>
+                        {criterion.fieldType === 'select' ? (
+                          <AttentionSelectField
+                            fieldName={criterion.fieldName}
+                            value={criterion.value || ''}
+                            onChange={(value) => updateAttentionCriterion(index, { value })}
+                            disabled={!criterion.enabled}
+                          />
+                        ) : (
+                          <input
+                            type={criterion.fieldType === 'number' ? 'number' : 'text'}
+                            value={criterion.value || ''}
+                            onChange={(e) => updateAttentionCriterion(index, { value: e.target.value })}
+                            className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white/50 dark:bg-orange-950/70 text-gray-900 dark:text-white"
+                            disabled={!criterion.enabled}
+                            placeholder="Ingresar valor..."
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
+                        Prioridad
+                      </label>
+                      <select
+                        value={criterion.priority}
+                        onChange={(e) => updateAttentionCriterion(index, { priority: e.target.value as 'high' | 'medium' | 'low' })}
+                        className="w-full px-2 py-1 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white/50 dark:bg-orange-950/70 text-gray-900 dark:text-white"
+                        disabled={!criterion.enabled}
+                      >
+                        <option value="high">Alta</option>
+                        <option value="medium">Media</option>
+                        <option value="low">Baja</option>
+                      </select>
+                    </div>
                   </div>
 
-                  {/* Criteria Configuration */}
-                  <div className="lg:col-span-2">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Criterios de Atención</h3>
-                    <div className="space-y-4 max-h-96 overflow-y-auto">
-                      {attentionFormData.criteria?.map((criterion, index) => (
-                        <div key={criterion.id} className="p-4 bg-orange-50/50 rounded-lg border border-orange-200/50">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="checkbox"
-                                checked={criterion.enabled}
-                                onChange={(e) => updateAttentionCriterion(index, { enabled: e.target.checked })}
-                                className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                              />
-                              <span className="text-sm font-medium text-gray-900">
-                                Criterio {index + 1}
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => removeAttentionCriterion(index)}
-                              className="p-1 text-red-600 hover:bg-red-100 rounded"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Campo
-                              </label>
-                              <select
-                                value={criterion.fieldName}
-                                onChange={(e) => {
-                                  const fieldType = database?.properties[e.target.value]?.type || 'rich_text';
-                                  updateAttentionCriterion(index, { 
-                                    fieldName: e.target.value,
-                                    fieldType,
-                                    value: '' // Reset value when field changes
-                                  });
-                                }}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
-                                disabled={!criterion.enabled}
-                              >
-                                {availableFields.map(field => (
-                                  <option key={field} value={field}>{field}</option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Condición
-                              </label>
-                              <select
-                                value={criterion.condition}
-                                onChange={(e) => updateAttentionCriterion(index, { condition: e.target.value as any })}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
-                                disabled={!criterion.enabled}
-                              >
-                                <option value="equals">Igual a</option>
-                                <option value="not_equals">Diferente de</option>
-                                <option value="empty">Está vacío</option>
-                                <option value="not_empty">No está vacío</option>
-                                <option value="contains">Contiene</option>
-                                <option value="not_contains">No contiene</option>
-                                <option value="less_than">Menor que</option>
-                                <option value="greater_than">Mayor que</option>
-                                <option value="is_true">Es verdadero</option>
-                                <option value="is_false">Es falso</option>
-                              </select>
-                            </div>
-
-                            {/* Value field - only show if condition requires a value */}
-                            {!['empty', 'not_empty', 'is_true', 'is_false'].includes(criterion.condition) && (
-                              <div className="md:col-span-2">
-                                <label className="block text-xs font-medium text-gray-700 mb-1">
-                                  Valor
-                                </label>
-                                {criterion.fieldType === 'select' ? (
-                                  <AttentionSelectField
-                                    fieldName={criterion.fieldName}
-                                    value={criterion.value || ''}
-                                    onChange={(value) => updateAttentionCriterion(index, { value })}
-                                    disabled={!criterion.enabled}
-                                  />
-                                ) : (
-                                  <input
-                                    type={criterion.fieldType === 'number' ? 'number' : 'text'}
-                                    value={criterion.value || ''}
-                                    onChange={(e) => updateAttentionCriterion(index, { value: e.target.value })}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
-                                    disabled={!criterion.enabled}
-                                    placeholder="Ingresar valor..."
-                                  />
-                                )}
-                              </div>
-                            )}
-
-                            <div>
-                              <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Prioridad
-                              </label>
-                              <select
-                                value={criterion.priority}
-                                onChange={(e) => updateAttentionCriterion(index, { priority: e.target.value as 'high' | 'medium' | 'low' })}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
-                                disabled={!criterion.enabled}
-                              >
-                                <option value="high">Alta</option>
-                                <option value="medium">Media</option>
-                                <option value="low">Baja</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="mt-3 p-2 bg-white rounded border">
-                            <p className="text-xs text-gray-600">
-                              <span className="font-medium">Descripción:</span> {criterion.description}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-
-                      {(!attentionFormData.criteria || attentionFormData.criteria.length === 0) && (
-                        <div className="text-center py-8 text-gray-500">
-                          <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                          <p>No hay criterios definidos</p>
-                          <p className="text-sm">Agrega criterios para definir qué artículos requieren atención</p>
-                        </div>
-                      )}
-                    </div>
+                  <div className="mt-3 p-2 bg-white dark:bg-gray-900/80 rounded border dark:border-gray-700/80">
+                    <p className="text-xs text-gray-600 dark:text-gray-300">
+                      <span className="font-medium">Descripción:</span> {criterion.description}
+                    </p>
                   </div>
                 </div>
+              ))}
+
+              {(!attentionFormData.criteria || attentionFormData.criteria.length === 0) && (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <AlertTriangle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No hay criterios definidos</p>
+                  <p className="text-sm">Agrega criterios para definir qué artículos requieren atención</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Existing Attention Configurations */}
+    {!isCreatingAttention && !editingAttentionConfig && (
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {attentionConfigurations.map((config) => (
+          <div key={config.id} className={`bg-white/80 dark:bg-gray-900/90 backdrop-blur-md rounded-xl p-6 border shadow-sm hover:shadow-md transition-all duration-200 ${
+            activeAttentionConfig?.id === config.id
+              ? 'border-orange-300 bg-orange-50/50 dark:bg-orange-900/40 dark:border-orange-700'
+              : 'border-gray-200/50 dark:border-gray-700/80'
+          }`}>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{config.name}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Operador: {config.operator}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Estado: {config.enabled ? 'Habilitado' : 'Deshabilitado'}
+                </p>
               </div>
-            )}
+              
+              <div className="flex items-center space-x-1">
+                {activeAttentionConfig?.id !== config.id && config.enabled && (
+                  <button
+                    onClick={() => handleActivateAttention(config.id)}
+                    className="p-2 text-gray-600 dark:text-gray-300 hover:text-orange-600 dark:hover:text-orange-300 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-lg transition-all duration-200"
+                    title="Activar criterios"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => handleStartEditAttention(config)}
+                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all duration-200"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDeleteAttention(config.id)}
+                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all duration-200"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
 
-            {/* Existing Attention Configurations */}
-            {!isCreatingAttention && !editingAttentionConfig && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {attentionConfigurations.map((config) => (
-                  <div key={config.id} className={`bg-white/80 backdrop-blur-md rounded-xl p-6 border shadow-sm hover:shadow-md transition-all duration-200 ${
-                    activeAttentionConfig?.id === config.id ? 'border-orange-300 bg-orange-50/50' : 'border-gray-200/50'
-                  }`}>
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-bold text-gray-900 mb-1">{config.name}</h3>
-                        <p className="text-sm text-gray-600">Operador: {config.operator}</p>
-                        <p className="text-sm text-gray-600">
-                          Estado: {config.enabled ? 'Habilitado' : 'Deshabilitado'}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center space-x-1">
-                        {activeAttentionConfig?.id !== config.id && config.enabled && (
-                          <button
-                            onClick={() => handleActivateAttention(config.id)}
-                            className="p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all duration-200"
-                            title="Activar criterios"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleStartEditAttention(config)}
-                          className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteAttention(config.id)}
-                          className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-sm text-gray-600">
-                        <span className="font-medium">Criterios:</span> {config.criteria.filter(c => c.enabled).length} activos
-                      </p>
-                      
-                      <div className="flex flex-wrap gap-1">
-                        {config.criteria.filter(c => c.enabled).slice(0, 2).map((criterion, index) => (
-                          <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                            {criterion.fieldName}
-                          </span>
-                        ))}
-                        {config.criteria.filter(c => c.enabled).length > 2 && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            +{config.criteria.filter(c => c.enabled).length - 2} más
-                          </span>
-                        )}
-                      </div>
-                      
-                      {activeAttentionConfig?.id === config.id && (
-                        <div className="flex items-center space-x-1 text-xs text-orange-600 mt-2">
-                          <AlertTriangle className="w-3 h-3" />
-                          <span>Criterios Activos</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                <span className="font-medium">Criterios:</span> {config.criteria.filter(c => c.enabled).length} activos
+              </p>
+              
+              <div className="flex flex-wrap gap-1">
+                {config.criteria.filter(c => c.enabled).slice(0, 2).map((criterion, index) => (
+                  <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200">
+                    {criterion.fieldName}
+                  </span>
                 ))}
-
-                {attentionConfigurations.length === 0 && (
-                  <div className="col-span-full text-center py-12">
-                    <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">No hay criterios de atención</h3>
-                    <p className="text-gray-600 mb-4">Define criterios para determinar qué artículos requieren atención</p>
-                    <button
-                      onClick={handleStartCreateAttention}
-                      className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Crear Criterios</span>
-                    </button>
-                  </div>
+                {config.criteria.filter(c => c.enabled).length > 2 && (
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100">
+                    +{config.criteria.filter(c => c.enabled).length - 2} más
+                  </span>
                 )}
               </div>
-            )}
+              
+              {activeAttentionConfig?.id === config.id && (
+                <div className="flex items-center space-x-1 text-xs text-orange-600 dark:text-orange-300 mt-2">
+                  <AlertTriangle className="w-3 h-3" />
+                  <span>Criterios Activos</span>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {attentionConfigurations.length === 0 && (
+          <div className="col-span-full text-center py-12">
+            <AlertTriangle className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-orange-300" />
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay criterios de atención</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">Define criterios para determinar qué artículos requieren atención</p>
+            <button
+              onClick={handleStartCreateAttention}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:from-orange-600 hover:to-red-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Crear Criterios</span>
+            </button>
           </div>
         )}
+      </div>
+    )}
+  </div>
+)}
       </div>
     </div>
   );

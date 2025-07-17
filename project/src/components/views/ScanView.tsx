@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Scan, Camera, Keyboard, Search, CheckCircle, AlertCircle, RefreshCw, Package, Hash, Shield, MapPin, Calendar, CalendarClock, DollarSign, Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone } from 'lucide-react';
+import { 
+  Scan, Camera, Keyboard, Search, CheckCircle, AlertCircle, RefreshCw, 
+  Package, Hash, Shield, MapPin, Calendar, CalendarClock, DollarSign, 
+  Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone 
+} from 'lucide-react';
 import { useNotion } from '../../contexts/NotionContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HelpTooltip } from '../common/HelpTooltip';
@@ -19,7 +23,6 @@ export const ScanView: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Auto-focus the input when in manual mode
     if (scanMode === 'manual' && inputRef.current) {
       inputRef.current.focus();
     }
@@ -31,7 +34,6 @@ export const ScanView: React.FC = () => {
     } else if (scanMode === 'manual' && scannerRef.current) {
       cleanupScanner();
     }
-
     return () => {
       cleanupScanner();
     };
@@ -72,40 +74,24 @@ export const ScanView: React.FC = () => {
     }
   };
 
-  // ✅ SOLUCIÓN: Función helper para convertir valores a string de forma segura
   const safeStringValue = (value: any): string => {
-    if (value === null || value === undefined) {
-      return '';
-    }
-    
-    if (typeof value === 'string') {
-      return value;
-    }
-    
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
     if (typeof value === 'object') {
-      // Si es un objeto con estructura conocida como { prefijo, número }
       if (value.prefix && typeof value.number === 'number') {
         return `${value.prefix}-${value.number}`;
       }
-      // Para otros objetos, usar JSON.stringify
       return JSON.stringify(value);
     }
-    
-    // Para números, booleanos, etc.
     return String(value);
   };
 
-  // ✅ NUEVA FUNCIÓN: Formatear fechas para mostrar en vista
   const formatDateForDisplay = (dateValue: any): string => {
     if (!dateValue) return 'N/A';
-    
     try {
       let date: Date;
-      
-      // Si es string con formato ISO o YYYY-MM-DD
       if (typeof dateValue === 'string') {
         if (dateValue.match(/^\d{4}-\d{2}-\d{2}/)) {
-          // Si solo tiene fecha (YYYY-MM-DD), agregar hora por defecto
           if (dateValue.length === 10) {
             date = new Date(dateValue + 'T12:00:00');
           } else {
@@ -119,19 +105,14 @@ export const ScanView: React.FC = () => {
       } else {
         return safeStringValue(dateValue);
       }
-      
-      // Verificar que la fecha es válida
       if (isNaN(date.getTime())) {
         return safeStringValue(dateValue);
       }
-      
-      // Formatear como DD/MM/YYYY - HH:MM
       const day = date.getDate().toString().padStart(2, '0');
       const month = (date.getMonth() + 1).toString().padStart(2, '0');
       const year = date.getFullYear();
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
-      
       return `${day}/${month}/${year} - ${hours}:${minutes}`;
     } catch (error) {
       console.warn('Error formatting date:', dateValue, error);
@@ -139,21 +120,7 @@ export const ScanView: React.FC = () => {
     }
   };
 
-  // ✅ FUNCIÓN MEJORADA: Helper para determinar disponibilidad de stock con debugging extenso
   const getStockAvailability = (item: any) => {
-    console.log('🔍 === DEBUGGING STOCK AVAILABILITY ===');
-    console.log('🔍 Full item object:', item);
-    console.log('🔍 Item properties:', item.properties);
-    
-    // 🔍 NUEVO: Mostrar TODOS los campos disponibles
-    console.log('🔍 === ALL AVAILABLE FIELDS ===');
-    Object.keys(item.properties).forEach(fieldName => {
-      const fieldValue = item.properties[fieldName];
-      console.log(`🔍 Field "${fieldName}":`, fieldValue, `(type: ${typeof fieldValue})`);
-    });
-    console.log('🔍 === END ALL FIELDS ===');
-    
-    // Buscar el campo de stock con diferentes nombres posibles
     const possibleStockFields = [
       'Stock Available', 
       'stock_available', 
@@ -167,117 +134,54 @@ export const ScanView: React.FC = () => {
       'En_Stock',
       'Stock_Available'
     ];
-    
     let stockField = null;
     let stockValue = null;
-    
     for (const fieldName of possibleStockFields) {
       if (item.properties[fieldName] !== undefined) {
         stockField = fieldName;
         stockValue = item.properties[fieldName];
-        console.log(`🔍 ✅ FOUND STOCK FIELD: "${fieldName}" with value:`, stockValue);
         break;
       }
     }
-    
     if (!stockField) {
-      console.log('🔍 ❌ NO STOCK FIELD FOUND in any of these names:', possibleStockFields);
-      console.log('🔍 Available field names:', Object.keys(item.properties));
-      
-      // 🔍 NUEVO: Buscar campos que contengan "stock" o "available" en el nombre
       const fieldsWithStock = Object.keys(item.properties).filter(name => 
         name.toLowerCase().includes('stock') || 
         name.toLowerCase().includes('available') ||
         name.toLowerCase().includes('disponib')
       );
-      
       if (fieldsWithStock.length > 0) {
-        console.log('🔍 🔍 FOUND FIELDS CONTAINING STOCK/AVAILABLE:', fieldsWithStock);
         stockField = fieldsWithStock[0];
         stockValue = item.properties[stockField];
-        console.log(`🔍 Using field "${stockField}" with value:`, stockValue);
       }
     }
-    
-    console.log('🔍 Final stock field:', stockField);
-    console.log('🔍 Final stock value:', stockValue);
-    console.log('🔍 Stock value type:', typeof stockValue);
-    console.log('🔍 Stock value JSON:', JSON.stringify(stockValue));
-    
-    if (stockValue === null || stockValue === undefined) {
-      console.log('🔍 Stock value is null/undefined, returning false');
-      return false;
-    }
-    
-    // Si es boolean, usar directamente
-    if (typeof stockValue === 'boolean') {
-      console.log('🔍 Stock value is boolean:', stockValue);
-      return stockValue;
-    }
-    
-    // Si es string, convertir
+    if (stockValue === null || stockValue === undefined) return false;
+    if (typeof stockValue === 'boolean') return stockValue;
     if (typeof stockValue === 'string') {
       const lowerValue = stockValue.toLowerCase().trim();
-      console.log('🔍 Stock value as lowercase string:', lowerValue);
-      const isTrue = lowerValue === 'true' || lowerValue === 'yes' || lowerValue === 'sí' || lowerValue === '1' || lowerValue === 'checked';
-      console.log('🔍 String conversion result:', isTrue);
-      return isTrue;
+      return lowerValue === 'true' || lowerValue === 'yes' || lowerValue === 'sí' || lowerValue === '1' || lowerValue === 'checked';
     }
-    
-    // Si es número, considerar 1 como true, 0 como false
     if (typeof stockValue === 'number') {
-      console.log('🔍 Stock value is number:', stockValue);
-      const isTrue = stockValue === 1 || stockValue > 0;
-      console.log('🔍 Number conversion result:', isTrue);
-      return isTrue;
+      return stockValue === 1 || stockValue > 0;
     }
-    
-    // Si es objeto (como puede venir de Notion), intentar extraer el valor
     if (typeof stockValue === 'object' && stockValue !== null) {
-      console.log('🔍 Stock value is object, checking properties...');
-      
-      // Notion checkbox format
-      if (stockValue.checkbox !== undefined) {
-        console.log('🔍 Found checkbox property:', stockValue.checkbox);
-        return Boolean(stockValue.checkbox);
-      }
-      
-      // Otros formatos posibles
-      if (stockValue.value !== undefined) {
-        console.log('🔍 Found value property:', stockValue.value);
-        return Boolean(stockValue.value);
-      }
-      
-      if (stockValue.checked !== undefined) {
-        console.log('🔍 Found checked property:', stockValue.checked);
-        return Boolean(stockValue.checked);
-      }
+      if (stockValue.checkbox !== undefined) return Boolean(stockValue.checkbox);
+      if (stockValue.value !== undefined) return Boolean(stockValue.value);
+      if (stockValue.checked !== undefined) return Boolean(stockValue.checked);
     }
-    
-    // Por defecto, false
-    console.log('🔍 No valid stock value found, returning false');
-    console.log('🔍 === END STOCK DEBUGGING ===');
     return false;
   };
 
   const handleScan = async (code: string) => {
     if (!code.trim()) return;
-
     setScannedCode(code);
     setIsProcessing(true);
-
     try {
       let item = null;
-      // Get the search field from selected configuration
       const config = scanConfigurations.find(c => c.id === selectedConfig);
       const searchField = config?.searchField;
-      console.log('🔍 [autoSave DEBUG] Config:', config);
-      console.log('🔍 [autoSave DEBUG] config.autoSave:', config?.autoSave);
       if (searchField) {
-        // Search using the configured field
         item = await searchItem(code, searchField);
       } else {
-        // Try multiple fields if no configuration is selected
         const fieldsToTry = ['ID', 'Name', 'Serial Number', 'Nombre', 'Número de Serie'];
         for (const field of fieldsToTry) {
           if (database?.properties[field]) {
@@ -290,12 +194,10 @@ export const ScanView: React.FC = () => {
         setCurrentItem(item);
         const itemName = safeStringValue(item.properties['Name'] || item.properties['ID'] || item.properties['Nombre']);
         toast.success(`${t('toast.itemFound')} ${itemName}`);
-        // ✅ APLICAR CONFIGURACIÓN AUTOMÁTICAMENTE SI autoSave ESTÁ ACTIVADO
         if (config && config.autoSave) {
-          console.log('🔍 [autoSave DEBUG] autoSave is TRUE, applying configuration automatically!');
           toast(t('scan.autoSaveApplied'), { icon: '⚡' });
           setTimeout(() => {
-            handleApplyConfiguration(item); // <-- pasa el item directamente
+            handleApplyConfiguration(item);
           }, 0);
         }
       } else {
@@ -317,82 +219,62 @@ export const ScanView: React.FC = () => {
     }
   };
 
-  // Helper para transformar valores según el tipo de campo Notion
   const transformValueForNotion = (value: any, fieldType: string) => {
     if (value === null || value === undefined) return undefined;
-    // Relación: array de { id }
     if (fieldType === 'relation') {
-      // Si ya es array de objetos con id, lo dejamos
       if (Array.isArray(value) && value[0] && value[0].id) return value;
-      // Si es array de strings (IDs o nombres)
       if (Array.isArray(value)) {
         return value.map((v: any) => (typeof v === 'object' && v.id ? v : { id: v }));
       }
-      // Si es string (ID o nombre)
       return [{ id: value }];
     }
-    // Multi-select: array de { name }
     if (fieldType === 'multi_select') {
       if (Array.isArray(value)) {
         return value.map((v: any) => (typeof v === 'object' && v.name ? v : { name: v }));
       }
       return [{ name: value }];
     }
-    // Select/Status: { name }
     if (fieldType === 'select' || fieldType === 'status') {
       if (typeof value === 'object' && value.name) return value;
       return { name: value };
     }
-    // Checkbox: booleano
     if (fieldType === 'checkbox') {
       if (typeof value === 'boolean') return value;
       if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1' || value === '✓ Sí';
       return Boolean(value);
     }
-    // Number
     if (fieldType === 'number') {
       if (typeof value === 'number') return value;
       if (!isNaN(Number(value))) return Number(value);
       return undefined;
     }
-    // Date
     if (fieldType === 'date') {
-      return value; // Se asume formato ISO o compatible
+      return value;
     }
-    // Text, email, phone, url, etc.
     return value;
   };
 
-  // Cambia handleApplyConfiguration para transformar valores antes de guardar
   const handleApplyConfiguration = async (itemOverride?: any) => {
     const itemToUpdate = itemOverride || currentItem;
     if (!itemToUpdate || !selectedConfig) {
       toast.error(t('toast.selectConfiguration'));
       return;
     }
-
     const config = scanConfigurations.find(c => c.id === selectedConfig);
     if (!config) {
       toast.error(t('toast.configurationNotFound'));
       return;
     }
-
     setIsProcessing(true);
-
     try {
-      // Prepare properties to update
       const propertiesToUpdate: Record<string, any> = {};
       const fieldsModified: string[] = [];
-
       config.targetFields.forEach(field => {
         if (field.enabled) {
           let value = field.value;
-
-          // Handle custom date values
           if (field.fieldType === 'date' && field.value === '__CUSTOM_DATE__' && field.customDate) {
             value = field.customDate;
           }
-          // Transformar valor según tipo de campo
           const transformed = transformValueForNotion(value, field.fieldType);
           if (transformed !== undefined) {
             propertiesToUpdate[field.fieldName] = transformed;
@@ -400,19 +282,11 @@ export const ScanView: React.FC = () => {
           }
         }
       });
-
-      console.log('🔍 Properties to update:', propertiesToUpdate);
-
-      // Update the item
       const success = await updateItem(itemToUpdate.pageId, propertiesToUpdate);
-
       if (success) {
         toast.success(t('toast.itemUpdated'));
-        
-        // Add to scan history - usar safeStringValue para evitar errores
         const itemId = safeStringValue(itemToUpdate.properties['ID'] || itemToUpdate.properties['Nombre'] || itemToUpdate.id);
         const itemName = safeStringValue(itemToUpdate.properties['Name'] || itemToUpdate.properties['Nombre'] || itemToUpdate.properties['ID']);
-        
         addScanHistory({
           itemId,
           itemName,
@@ -420,12 +294,8 @@ export const ScanView: React.FC = () => {
           configurationUsed: config.name,
           fieldsModified,
         });
-
-        // Reset for next scan
         setScannedCode('');
         setCurrentItem(null);
-        
-        // Re-focus input for continuous scanning
         if (scanMode === 'manual' && inputRef.current) {
           inputRef.current.focus();
         }
@@ -442,11 +312,11 @@ export const ScanView: React.FC = () => {
 
   const getStatusColor = (condition: string) => {
     switch (condition?.toLowerCase()) {
-      case 'excellent': return 'bg-green-100 text-green-800';
-      case 'good': return 'bg-blue-100 text-blue-800';
-      case 'fair': return 'bg-yellow-100 text-yellow-800';
-      case 'poor': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'excellent': return 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100';
+      case 'good': return 'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100';
+      case 'fair': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100';
+      case 'poor': return 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100';
     }
   };
 
@@ -460,9 +330,6 @@ export const ScanView: React.FC = () => {
     }
   };
 
-
-
-  // Get icon component by name
   const getIconComponent = (iconName: string) => {
     const icons: Record<string, any> = {
       Package, Hash, Shield, MapPin, Calendar, CalendarClock, DollarSign, Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone
@@ -470,23 +337,18 @@ export const ScanView: React.FC = () => {
     return icons[iconName] || Info;
   };
 
-  // FUNCIÓN MEJORADA: Formatear valores para mostrar SIEMPRE el name o valor legible
   const extractName = (val: any): string => {
     if (val === null || val === undefined) return 'N/A';
     if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') return val.toString();
     if (Array.isArray(val)) {
       if (val.length === 0) return 'N/A';
-      // Si es array de objetos con name
       if (typeof val[0] === 'object' && val[0] && val[0].name) {
         return val.map((v: any) => extractName(v)).join(', ');
       }
-      // Si es array de objetos con plain_text
       if (typeof val[0] === 'object' && val[0] && val[0].plain_text) {
         return val.map((v: any) => v.plain_text).join(', ');
       }
-      // Si es array de strings
       if (typeof val[0] === 'string') return val.join(', ');
-      // Si es array de números
       if (typeof val[0] === 'number') return val.join(', ');
       return `${val.length} elemento(s)`;
     }
@@ -504,7 +366,6 @@ export const ScanView: React.FC = () => {
       if (val.id && !val.name) return val.id;
       if (val.url) return val.url;
       if (val.color && val.name) return val.name;
-      // Buscar recursivamente en los valores del objeto
       for (const key of Object.keys(val)) {
         const result = extractName(val[key]);
         if (result !== 'N/A') return result;
@@ -516,35 +377,31 @@ export const ScanView: React.FC = () => {
 
   const formatFieldValue = (value: any, fieldType: string) => {
     if (value === null || value === undefined) return 'N/A';
-
     switch (fieldType) {
       case 'checkbox':
         return value ? '✓ Sí' : '✗ No';
-
       case 'date':
-        
         return formatDateForDisplay(value);
       case 'number':
         return typeof value === 'number' ? value.toLocaleString() : value;
       case 'multi_select':
-
       case 'select':
         return extractName(value);
       case 'url':
         return value ? (
-          <a href={value} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">
+          <a href={value} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-300 hover:underline truncate">
             {value}
           </a>
         ) : 'N/A';
       case 'email':
         return value ? (
-          <a href={`mailto:${value}`} className="text-blue-600 hover:underline">
+          <a href={`mailto:${value}`} className="text-blue-600 dark:text-blue-300 hover:underline">
             {value}
           </a>
         ) : 'N/A';
       case 'phone_number':
         return value ? (
-          <a href={`tel:${value}`} className="text-blue-600 hover:underline">
+          <a href={`tel:${value}`} className="text-blue-600 dark:text-blue-300 hover:underline">
             {value}
           </a>
         ) : 'N/A';
@@ -553,48 +410,40 @@ export const ScanView: React.FC = () => {
     }
   };
 
-  // Render item information based on active display configuration
   const renderItemInformation = () => {
     if (!currentItem) return null;
-
     const displayConfig = activeDisplayConfig;
-    if (!displayConfig) {
-      // Fallback to default display
-      return renderDefaultItemInformation();
-    }
-
+    if (!displayConfig) return renderDefaultItemInformation();
     const enabledFields = displayConfig.displayFields
       .filter(field => field.enabled)
       .sort((a, b) => a.order - b.order);
-
     const summaryFields = enabledFields.filter(field => field.showInSummary);
     const detailFields = enabledFields.filter(field => !field.showInSummary);
 
     return (
-      <div className="space-y-4">
-        <div className="p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg lg:rounded-xl">
+      <div className="space-y-4 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
+        <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg lg:rounded-xl">
           <div className="flex items-center space-x-2 mb-3">
-            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-            <span className="font-medium text-green-800 text-sm sm:text-base">{t('scan.itemFound')}</span>
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
+            <span className="font-medium text-green-800 dark:text-green-100 text-sm sm:text-base">{t('scan.itemFound')}</span>
           </div>
-          
-          {/* Summary Fields */}
           {summaryFields.length > 0 && (
             <div className={`space-y-3 ${displayConfig.layout === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : ''}`}>
               {summaryFields.map((field, index) => {
                 const IconComponent = getIconComponent(field.icon || 'Info');
                 const value = currentItem.properties[field.fieldName];
-                
                 return (
                   <div key={index} className={displayConfig.layout === 'compact' ? 'flex items-center space-x-2' : ''}>
                     <div className="flex items-center space-x-2 mb-1">
-                      <IconComponent className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500" />
-                      <p className="text-xs sm:text-sm text-gray-600 font-medium">{field.displayName}</p>
+                      <IconComponent className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 dark:text-gray-300" />
+                      <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 font-medium">{field.displayName}</p>
                     </div>
                     <div className={displayConfig.layout === 'compact' ? 'flex-1' : ''}>
                       {field.fieldType === 'checkbox' && field.fieldName.toLowerCase().includes('stock') ? (
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          getStockAvailability(currentItem) ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                          getStockAvailability(currentItem)
+                            ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
+                            : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
                         }`}>
                           {getStockAvailability(currentItem) ? t('scan.available') : t('scan.outOfStock')}
                         </span>
@@ -603,13 +452,11 @@ export const ScanView: React.FC = () => {
                           {getConditionText(value)}
                         </span>
                       ) : field.fieldType === 'select' ? (
-                        // ✅ NUEVO: Para otros campos select, mostrar solo el valor
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
                           {formatFieldValue(value, field.fieldType)}
                         </span>
                       ) : (
-                        <p className="font-medium text-gray-900 text-sm sm:text-base truncate">
-                          {/* ✅ PASAR EL NOMBRE DEL CAMPO PARA FORMATEO CORRECTO */}
+                        <p className="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate">
                           {formatFieldValue(value, field.fieldType)}
                         </p>
                       )}
@@ -620,26 +467,22 @@ export const ScanView: React.FC = () => {
             </div>
           )}
         </div>
-
-        {/* Detail Fields */}
         {detailFields.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-2">
+            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-2">
               Información Detallada
             </h4>
             <div className={`space-y-2 ${displayConfig.layout === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : ''}`}>
               {detailFields.map((field, index) => {
                 const IconComponent = getIconComponent(field.icon || 'Info');
                 const value = currentItem.properties[field.fieldName];
-                
                 return (
-                  <div key={index} className="p-2 bg-gray-50 rounded-lg">
+                  <div key={index} className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <div className="flex items-center space-x-2 mb-1">
-                      <IconComponent className="w-3 h-3 text-gray-500" />
-                      <p className="text-xs text-gray-600 font-medium">{field.displayName}</p>
+                      <IconComponent className="w-3 h-3 text-gray-500 dark:text-gray-300" />
+                      <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">{field.displayName}</p>
                     </div>
-                    <p className="text-sm text-gray-900 ml-5">
-                      {/* ✅ PASAR EL NOMBRE DEL CAMPO PARA FORMATEO CORRECTO */}
+                    <p className="text-sm text-gray-900 dark:text-gray-100 ml-5">
                       {formatFieldValue(value, field.fieldType)}
                     </p>
                   </div>
@@ -648,12 +491,10 @@ export const ScanView: React.FC = () => {
             </div>
           </div>
         )}
-
-        {/* Metadata */}
         {displayConfig.showMetadata && (
-          <div className="pt-3 border-t border-gray-200">
-            <h4 className="text-xs font-medium text-gray-500 mb-2">Metadatos</h4>
-            <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+          <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Metadatos</h4>
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 dark:text-gray-400">
               <div>
                 <span className="font-medium">Creado:</span> {formatDateForDisplay(currentItem.createdTime)}
               </div>
@@ -667,86 +508,75 @@ export const ScanView: React.FC = () => {
     );
   };
 
-  // Fallback default item information display
-  const renderDefaultItemInformation = () => {
-    return (
-      <div className="space-y-4">
-        <div className="p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg lg:rounded-xl">
-          <div className="flex items-center space-x-2 mb-3">
-            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-            <span className="font-medium text-green-800 text-sm sm:text-base">{t('scan.itemFound')}</span>
+  const renderDefaultItemInformation = () => (
+    <div className="space-y-4">
+      <div className="p-3 sm:p-4 bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg lg:rounded-xl">
+        <div className="flex items-center space-x-2 mb-3">
+          <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
+          <span className="font-medium text-green-800 dark:text-green-100 text-sm sm:text-base">{t('scan.itemFound')}</span>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">{t('scan.name')}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate">
+              {safeStringValue(currentItem.properties['Name'] || currentItem.properties['Nombre'] || 'N/A')}
+            </p>
           </div>
-          
-          <div className="space-y-3">
+          <div>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">{t('scan.id')}</p>
+            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate">
+              {safeStringValue(currentItem.properties['ID'] || currentItem.properties['Nombre'] || 'N/A')}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <p className="text-xs sm:text-sm text-gray-600">{t('scan.name')}</p>
-              <p className="font-medium text-gray-900 text-sm sm:text-base truncate">
-                {safeStringValue(currentItem.properties['Name'] || currentItem.properties['Nombre'] || 'N/A')}
-              </p>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">{t('scan.condition')}</p>
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(currentItem.properties['Condition'])}`}>
+                {getConditionText(currentItem.properties['Condition'])}
+              </span>
             </div>
-            
             <div>
-              <p className="text-xs sm:text-sm text-gray-600">{t('scan.id')}</p>
-              <p className="font-medium text-gray-900 text-sm sm:text-base truncate">
-                {safeStringValue(currentItem.properties['ID'] || currentItem.properties['Nombre'] || 'N/A')}
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs sm:text-sm text-gray-600">{t('scan.condition')}</p>
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(currentItem.properties['Condition'])}`}>
-                  {getConditionText(currentItem.properties['Condition'])}
-                </span>
-              </div>
-              
-              <div>
-                <p className="text-xs sm:text-sm text-gray-600">{t('scan.stock')}</p>
-                {(() => {
-                  const isAvailable = getStockAvailability(currentItem);
-                  console.log('🔍 Final stock availability result:', isAvailable);
-                  return (
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                    }`}>
-                      {isAvailable ? t('scan.available') : t('scan.outOfStock')}
-                    </span>
-                  );
-                })()}
-              </div>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">{t('scan.stock')}</p>
+              {(() => {
+                const isAvailable = getStockAvailability(currentItem);
+                return (
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    isAvailable
+                      ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
+                      : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100'
+                  }`}>
+                    {isAvailable ? t('scan.available') : t('scan.outOfStock')}
+                  </span>
+                );
+              })()}
             </div>
           </div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
 
-  // Get available search fields for debugging
   const availableFields = database ? Object.keys(database.properties) : [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-3 sm:p-4 lg:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 p-3 sm:p-4 lg:p-6">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-6 lg:mb-8">
           <div className="flex items-center justify-center space-x-3 mb-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('scan.title')}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white drop-shadow dark:drop-shadow-lg">{t('scan.title')}</h1>
             <HelpTooltip content={t('help.scan.overview')} />
           </div>
-          <p className="text-gray-600 text-sm sm:text-base">{t('scan.subtitle')}</p>
-          
-          {/* Debug info - show available fields */}
+          <p className="text-gray-600 dark:text-gray-200 dark:font-medium text-sm sm:text-base">{t('scan.subtitle')}</p>
           {availableFields.length > 0 && (
-            <div className="mt-2 text-xs text-gray-500">
+            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               Campos disponibles: {availableFields.join(', ')}
             </div>
           )}
         </div>
-
-        {/* Configuration Selection - Move to top */}
         {scanConfigurations.length > 0 && (
-          <div className="bg-white/80 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 shadow-sm mb-6">
+          <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/70 shadow-sm mb-6">
             <div className="flex items-center space-x-2 mb-4">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                 {t('scan.selectConfiguration')}
               </label>
               <HelpTooltip content={t('help.scan.selectConfiguration')} />
@@ -754,7 +584,7 @@ export const ScanView: React.FC = () => {
             <select
               value={selectedConfig}
               onChange={(e) => setSelectedConfig(e.target.value)}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 transition-all duration-200 text-sm sm:text-base"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-700 rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-gray-900 dark:text-white transition-all duration-200 text-sm sm:text-base"
             >
               <option value="">{t('scan.chooseConfiguration')}</option>
               {scanConfigurations.map(config => (
@@ -765,17 +595,15 @@ export const ScanView: React.FC = () => {
             </select>
           </div>
         )}
-
-        {/* Scan Mode Toggle */}
         <div className="flex justify-center mb-6 lg:mb-8">
-          <div className="bg-white/80 backdrop-blur-md rounded-xl lg:rounded-2xl p-2 border border-gray-200/50 shadow-sm">
+          <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md rounded-xl lg:rounded-2xl p-2 border border-gray-200/50 dark:border-gray-700/70 shadow-sm">
             <div className="flex space-x-1 sm:space-x-2">
               <button
                 onClick={() => setScanMode('manual')}
                 className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-lg lg:rounded-xl text-sm font-medium transition-all duration-200 ${
                   scanMode === 'manual'
-                    ? 'bg-blue-100 text-blue-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-blue-100 text-blue-700 shadow-sm dark:bg-blue-800 dark:text-blue-100'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 <Keyboard className="w-4 h-4" />
@@ -786,8 +614,8 @@ export const ScanView: React.FC = () => {
                 onClick={() => setScanMode('camera')}
                 className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-lg lg:rounded-xl text-sm font-medium transition-all duration-200 ${
                   scanMode === 'camera'
-                    ? 'bg-blue-100 text-blue-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-blue-100 text-blue-700 shadow-sm dark:bg-blue-800 dark:text-blue-100'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 <Camera className="w-4 h-4" />
@@ -797,23 +625,21 @@ export const ScanView: React.FC = () => {
             </div>
           </div>
         </div>
-
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
           {/* Scanning Interface */}
-          <div className="bg-white/80 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 shadow-sm">
+          <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/70 shadow-sm">
             <div className="flex items-center space-x-2 mb-4 sm:mb-6">
               <Scan className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
                 {scanMode === 'manual' ? t('scan.manualEntry') : t('scan.cameraScan')}
               </h2>
               <HelpTooltip content={scanMode === 'manual' ? t('help.scan.manualEntry') : t('help.scan.cameraScan')} />
             </div>
-
             {scanMode === 'manual' ? (
               <form onSubmit={handleManualScan} className="space-y-4">
                 <div>
                   <div className="flex items-center space-x-2 mb-2">
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                       {t('scan.enterBarcode')}
                     </label>
                     <HelpTooltip content={t('help.scan.enterBarcode')} />
@@ -824,7 +650,7 @@ export const ScanView: React.FC = () => {
                       type="text"
                       value={scannedCode}
                       onChange={(e) => setScannedCode(e.target.value)}
-                      className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 transition-all duration-200 text-sm sm:text-base"
+                      className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-700 rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 transition-all duration-200 text-sm sm:text-base"
                       placeholder={t('scan.barcodePlaceholder')}
                       disabled={isProcessing}
                     />
@@ -847,8 +673,8 @@ export const ScanView: React.FC = () => {
                 <div id="qr-reader" className="w-full max-w-md mx-auto"></div>
                 {isScanning && (
                   <div className="text-center">
-                    <div className="inline-flex items-center space-x-2 text-blue-600">
-                      <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 rounded-full animate-spin"></div>
+                    <div className="inline-flex items-center space-x-2 text-blue-600 dark:text-blue-200">
+                      <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 dark:border-blue-800/30 dark:border-t-blue-800 rounded-full animate-spin"></div>
                       <span className="text-sm font-medium">{t('scan.scannerActive')}</span>
                     </div>
                   </div>
@@ -856,19 +682,16 @@ export const ScanView: React.FC = () => {
               </div>
             )}
           </div>
-
           {/* Item Information */}
-          <div className="bg-white/80 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 shadow-sm">
-            <div className="flex items-center space-x-2 mb-4 sm:mb-6">
+          <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/70 shadow-sm">
+            <div className="flex items-center space-x-2 mb-4">
               <Search className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">{t('scan.itemInformation')}</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white drop-shadow dark:drop-shadow-lg">{t('scan.itemInformation')}</h2>
               <HelpTooltip content={t('help.scan.itemInformation')} />
             </div>
-
             {currentItem ? (
               <div className="space-y-4">
                 {renderItemInformation()}
-                {/* Apply Configuration Button solo si autoSave está desactivado */}
                 {(() => {
                   const config = scanConfigurations.find(c => c.id === selectedConfig);
                   if (selectedConfig && config && !config.autoSave) {
@@ -896,17 +719,17 @@ export const ScanView: React.FC = () => {
                 })()}
               </div>
             ) : scannedCode && !isProcessing ? (
-              <div className="p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg lg:rounded-xl">
+              <div className="p-3 sm:p-4 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg lg:rounded-xl">
                 <div className="flex items-center space-x-2">
-                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
-                  <span className="font-medium text-red-800 text-sm sm:text-base">{t('scan.itemNotFound')}</span>
+                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 dark:text-red-400" />
+                  <span className="font-medium text-red-800 dark:text-red-100 text-sm sm:text-base">{t('scan.itemNotFound')}</span>
                 </div>
-                <p className="text-xs sm:text-sm text-red-700 mt-2">
+                <p className="text-xs sm:text-sm text-red-700 dark:text-red-200 mt-2">
                   {t('scan.noItemFound')} <span className="font-mono break-all">{scannedCode}</span>
                 </p>
               </div>
             ) : (
-              <div className="text-center py-8 sm:py-12 text-gray-500">
+              <div className="text-center py-8 sm:py-12 text-gray-500 dark:text-gray-400">
                 <Scan className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 opacity-50" />
                 <p className="text-base sm:text-lg font-medium">{t('scan.readyToScan')}</p>
                 <p className="text-xs sm:text-sm">{t('scan.scanToStart')}</p>
