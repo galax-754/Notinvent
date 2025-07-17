@@ -3,6 +3,10 @@ export interface NotionProperty {
   name: string;
   type: string;
   options?: string[]; // ✅ NUEVO: Opciones para campos select y multi_select
+  /**
+   * Opciones para campos de relación, usadas para mostrar nombres legibles de páginas relacionadas.
+   */
+  relationOptions?: Array<{ id: string; name: string }>;
 }
 
 export interface NotionDatabase {

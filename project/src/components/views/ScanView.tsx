@@ -7,7 +7,7 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 import toast from 'react-hot-toast';
 
 export const ScanView: React.FC = () => {
-  const { searchItem, updateItem, scanConfigurations, activeDisplayConfig, addScanHistory, isLoading, database } = useNotion();
+  const { searchItem, updateItem, scanConfigurations, activeDisplayConfig, addScanHistory, database } = useNotion();
   const { t } = useLanguage();
   const [scanMode, setScanMode] = useState<'manual' | 'camera'>('manual');
   const [scannedCode, setScannedCode] = useState('');
@@ -268,36 +268,36 @@ export const ScanView: React.FC = () => {
 
     try {
       let item = null;
-      
       // Get the search field from selected configuration
       const config = scanConfigurations.find(c => c.id === selectedConfig);
       const searchField = config?.searchField;
-      
+      console.log('🔍 [autoSave DEBUG] Config:', config);
+      console.log('🔍 [autoSave DEBUG] config.autoSave:', config?.autoSave);
       if (searchField) {
         // Search using the configured field
         item = await searchItem(code, searchField);
       } else {
         // Try multiple fields if no configuration is selected
         const fieldsToTry = ['ID', 'Name', 'Serial Number', 'Nombre', 'Número de Serie'];
-        
         for (const field of fieldsToTry) {
           if (database?.properties[field]) {
-            console.log(`Trying field: ${field}`);
             item = await searchItem(code, field);
-            if (item) {
-              console.log(`Found item using field: ${field}`);
-              break;
-            }
+            if (item) break;
           }
         }
       }
-      
       if (item) {
-        console.log('🔍 === ITEM FOUND ===');
-        console.log('🔍 Full item data:', item);
         setCurrentItem(item);
         const itemName = safeStringValue(item.properties['Name'] || item.properties['ID'] || item.properties['Nombre']);
         toast.success(`${t('toast.itemFound')} ${itemName}`);
+        // ✅ APLICAR CONFIGURACIÓN AUTOMÁTICAMENTE SI autoSave ESTÁ ACTIVADO
+        if (config && config.autoSave) {
+          console.log('🔍 [autoSave DEBUG] autoSave is TRUE, applying configuration automatically!');
+          toast(t('scan.autoSaveApplied'), { icon: '⚡' });
+          setTimeout(() => {
+            handleApplyConfiguration(item); // <-- pasa el item directamente
+          }, 0);
+        }
       } else {
         setCurrentItem(null);
         toast.error(t('toast.itemNotFound'));
@@ -317,8 +317,56 @@ export const ScanView: React.FC = () => {
     }
   };
 
-  const handleApplyConfiguration = async () => {
-    if (!currentItem || !selectedConfig) {
+  // Helper para transformar valores según el tipo de campo Notion
+  const transformValueForNotion = (value: any, fieldType: string) => {
+    if (value === null || value === undefined) return undefined;
+    // Relación: array de { id }
+    if (fieldType === 'relation') {
+      // Si ya es array de objetos con id, lo dejamos
+      if (Array.isArray(value) && value[0] && value[0].id) return value;
+      // Si es array de strings (IDs o nombres)
+      if (Array.isArray(value)) {
+        return value.map((v: any) => (typeof v === 'object' && v.id ? v : { id: v }));
+      }
+      // Si es string (ID o nombre)
+      return [{ id: value }];
+    }
+    // Multi-select: array de { name }
+    if (fieldType === 'multi_select') {
+      if (Array.isArray(value)) {
+        return value.map((v: any) => (typeof v === 'object' && v.name ? v : { name: v }));
+      }
+      return [{ name: value }];
+    }
+    // Select/Status: { name }
+    if (fieldType === 'select' || fieldType === 'status') {
+      if (typeof value === 'object' && value.name) return value;
+      return { name: value };
+    }
+    // Checkbox: booleano
+    if (fieldType === 'checkbox') {
+      if (typeof value === 'boolean') return value;
+      if (typeof value === 'string') return value.toLowerCase() === 'true' || value === '1' || value === '✓ Sí';
+      return Boolean(value);
+    }
+    // Number
+    if (fieldType === 'number') {
+      if (typeof value === 'number') return value;
+      if (!isNaN(Number(value))) return Number(value);
+      return undefined;
+    }
+    // Date
+    if (fieldType === 'date') {
+      return value; // Se asume formato ISO o compatible
+    }
+    // Text, email, phone, url, etc.
+    return value;
+  };
+
+  // Cambia handleApplyConfiguration para transformar valores antes de guardar
+  const handleApplyConfiguration = async (itemOverride?: any) => {
+    const itemToUpdate = itemOverride || currentItem;
+    if (!itemToUpdate || !selectedConfig) {
       toast.error(t('toast.selectConfiguration'));
       return;
     }
@@ -339,28 +387,31 @@ export const ScanView: React.FC = () => {
       config.targetFields.forEach(field => {
         if (field.enabled) {
           let value = field.value;
-          
+
           // Handle custom date values
           if (field.fieldType === 'date' && field.value === '__CUSTOM_DATE__' && field.customDate) {
             value = field.customDate;
           }
-          
-          propertiesToUpdate[field.fieldName] = value;
-          fieldsModified.push(field.fieldName);
+          // Transformar valor según tipo de campo
+          const transformed = transformValueForNotion(value, field.fieldType);
+          if (transformed !== undefined) {
+            propertiesToUpdate[field.fieldName] = transformed;
+            fieldsModified.push(field.fieldName);
+          }
         }
       });
 
       console.log('🔍 Properties to update:', propertiesToUpdate);
 
       // Update the item
-      const success = await updateItem(currentItem.pageId, propertiesToUpdate);
+      const success = await updateItem(itemToUpdate.pageId, propertiesToUpdate);
 
       if (success) {
         toast.success(t('toast.itemUpdated'));
         
         // Add to scan history - usar safeStringValue para evitar errores
-        const itemId = safeStringValue(currentItem.properties['ID'] || currentItem.properties['Nombre'] || currentItem.id);
-        const itemName = safeStringValue(currentItem.properties['Name'] || currentItem.properties['Nombre'] || currentItem.properties['ID']);
+        const itemId = safeStringValue(itemToUpdate.properties['ID'] || itemToUpdate.properties['Nombre'] || itemToUpdate.id);
+        const itemName = safeStringValue(itemToUpdate.properties['Name'] || itemToUpdate.properties['Nombre'] || itemToUpdate.properties['ID']);
         
         addScanHistory({
           itemId,
@@ -409,14 +460,7 @@ export const ScanView: React.FC = () => {
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'active': return t('common.active');
-      case 'inactive': return t('common.inactive');
-      case 'maintenance': return t('common.maintenance');
-      default: return status || t('common.unknown');
-    }
-  };
+
 
   // Get icon component by name
   const getIconComponent = (iconName: string) => {
@@ -426,35 +470,66 @@ export const ScanView: React.FC = () => {
     return icons[iconName] || Info;
   };
 
-  // ✅ FUNCIÓN ACTUALIZADA: Format field value for display con formato de fecha mejorado y campos select simplificados
-  const formatFieldValue = (value: any, fieldType: string, fieldName?: string) => {
+  // FUNCIÓN MEJORADA: Formatear valores para mostrar SIEMPRE el name o valor legible
+  const extractName = (val: any): string => {
+    if (val === null || val === undefined) return 'N/A';
+    if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') return val.toString();
+    if (Array.isArray(val)) {
+      if (val.length === 0) return 'N/A';
+      // Si es array de objetos con name
+      if (typeof val[0] === 'object' && val[0] && val[0].name) {
+        return val.map((v: any) => extractName(v)).join(', ');
+      }
+      // Si es array de objetos con plain_text
+      if (typeof val[0] === 'object' && val[0] && val[0].plain_text) {
+        return val.map((v: any) => v.plain_text).join(', ');
+      }
+      // Si es array de strings
+      if (typeof val[0] === 'string') return val.join(', ');
+      // Si es array de números
+      if (typeof val[0] === 'number') return val.join(', ');
+      return `${val.length} elemento(s)`;
+    }
+    if (typeof val === 'object') {
+      if (val.name) return val.name;
+      if (val.plain_text) return val.plain_text;
+      if (val.title) return val.title;
+      if (val.number !== undefined && val.prefix !== undefined) {
+        if (val.prefix) return `${val.prefix}-${val.number}`;
+        return val.number;
+      }
+      if (val.number !== undefined) return val.number;
+      if (typeof val.checked === 'boolean') return val.checked ? '✓ Sí' : '✗ No';
+      if (typeof val.value === 'boolean') return val.value ? '✓ Sí' : '✗ No';
+      if (val.id && !val.name) return val.id;
+      if (val.url) return val.url;
+      if (val.color && val.name) return val.name;
+      // Buscar recursivamente en los valores del objeto
+      for (const key of Object.keys(val)) {
+        const result = extractName(val[key]);
+        if (result !== 'N/A') return result;
+      }
+      return 'N/A';
+    }
+    return 'N/A';
+  };
+
+  const formatFieldValue = (value: any, fieldType: string) => {
     if (value === null || value === undefined) return 'N/A';
-    
+
     switch (fieldType) {
       case 'checkbox':
         return value ? '✓ Sí' : '✗ No';
+
       case 'date':
-        // ✅ USAR LA NUEVA FUNCIÓN DE FORMATEO DE FECHAS
+        
         return formatDateForDisplay(value);
       case 'number':
         return typeof value === 'number' ? value.toLocaleString() : value;
       case 'multi_select':
-        return Array.isArray(value) ? value.join(', ') : value;
+
       case 'select':
-        // ✅ NUEVO: Para campos select, mostrar solo el valor sin prefijos
-        const selectValue = safeStringValue(value);
-        
-        // Si es un campo de estado/condición, aplicar traducción
-        if (fieldName && (fieldName.toLowerCase().includes('condition') || fieldName.toLowerCase().includes('condicion'))) {
-          return getConditionText(selectValue);
-        }
-        
-        if (fieldName && (fieldName.toLowerCase().includes('status') || fieldName.toLowerCase().includes('estado'))) {
-          return getStatusText(selectValue);
-        }
-        
-        // Para otros campos select, mostrar el valor tal como está
-        return selectValue || 'N/A';
+        return extractName(value);
       case 'url':
         return value ? (
           <a href={value} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">
@@ -474,7 +549,7 @@ export const ScanView: React.FC = () => {
           </a>
         ) : 'N/A';
       default:
-        return safeStringValue(value);
+        return extractName(value);
     }
   };
 
@@ -530,12 +605,12 @@ export const ScanView: React.FC = () => {
                       ) : field.fieldType === 'select' ? (
                         // ✅ NUEVO: Para otros campos select, mostrar solo el valor
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {formatFieldValue(value, field.fieldType, field.fieldName)}
+                          {formatFieldValue(value, field.fieldType)}
                         </span>
                       ) : (
                         <p className="font-medium text-gray-900 text-sm sm:text-base truncate">
                           {/* ✅ PASAR EL NOMBRE DEL CAMPO PARA FORMATEO CORRECTO */}
-                          {formatFieldValue(value, field.fieldType, field.fieldName)}
+                          {formatFieldValue(value, field.fieldType)}
                         </p>
                       )}
                     </div>
@@ -565,7 +640,7 @@ export const ScanView: React.FC = () => {
                     </div>
                     <p className="text-sm text-gray-900 ml-5">
                       {/* ✅ PASAR EL NOMBRE DEL CAMPO PARA FORMATEO CORRECTO */}
-                      {formatFieldValue(value, field.fieldType, field.fieldName)}
+                      {formatFieldValue(value, field.fieldType)}
                     </p>
                   </div>
                 );
@@ -793,27 +868,32 @@ export const ScanView: React.FC = () => {
             {currentItem ? (
               <div className="space-y-4">
                 {renderItemInformation()}
-
-                {/* Apply Configuration Button */}
-                {selectedConfig && (
-                  <button
-                    onClick={handleApplyConfiguration}
-                    disabled={isProcessing}
-                    className="w-full bg-gradient-to-r from-green-500 to-blue-600 text-white py-2 sm:py-3 px-4 sm:px-6 rounded-lg lg:rounded-xl font-medium hover:from-green-600 hover:to-blue-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm sm:text-base"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                        <span>{t('scan.updating')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                        <span>{t('scan.applyConfiguration')}</span>
-                      </>
-                    )}
-                  </button>
-                )}
+                {/* Apply Configuration Button solo si autoSave está desactivado */}
+                {(() => {
+                  const config = scanConfigurations.find(c => c.id === selectedConfig);
+                  if (selectedConfig && config && !config.autoSave) {
+                    return (
+                      <button
+                        onClick={() => handleApplyConfiguration()}
+                        disabled={isProcessing}
+                        className="w-full bg-gradient-to-r from-green-500 to-blue-600 text-white py-2 sm:py-3 px-4 sm:px-6 rounded-lg lg:rounded-xl font-medium hover:from-green-600 hover:to-blue-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm sm:text-base"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                            <span>{t('scan.updating')}</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <span>{t('scan.applyConfiguration')}</span>
+                          </>
+                        )}
+                      </button>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             ) : scannedCode && !isProcessing ? (
               <div className="p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg lg:rounded-xl">

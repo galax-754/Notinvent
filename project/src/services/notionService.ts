@@ -73,15 +73,102 @@ class NotionService {
       // Convert Notion properties to our format
       const properties: Record<string, any> = {};
       
-      Object.entries(data.properties).forEach(([key, prop]: [string, any]) => {
+      // ...existing code...
+      // Cambiar forEach async por for...of await para relaciones
+      const propertyEntries = Object.entries(data.properties);
+      for (const [key, propRaw] of propertyEntries) {
+        const prop = propRaw as any;
         properties[key] = {
           id: prop.id,
           name: key,
           type: prop.type,
-          // ✅ NUEVO: Extraer opciones de select y multi_select
+
           options: this.extractSelectOptions(prop)
         };
-      });
+        // Copiar sub-objetos originales para compatibilidad con el frontend
+        if (prop.type === 'select' && prop.select) {
+          properties[key].select = { ...prop.select };
+        }
+        if (prop.type === 'multi_select' && prop.multi_select) {
+          properties[key].multi_select = { ...prop.multi_select };
+        }
+        if (prop.type === 'status' && prop.status) {
+          properties[key].status = { ...prop.status };
+        }
+        // Agregar metadata de relación si aplica
+        if (prop.type === 'relation' && prop.relation) {
+          properties[key].relation = {
+            database_id: prop.relation.database_id
+          };
+          // Obtener páginas relacionadas y exponerlas como relationOptions
+          try {
+            const relatedDbId = prop.relation.database_id;
+            // Cambiar a POST para obtener páginas de la base relacionada
+            const relatedPagesResp = await fetch(`${this.baseURL}/database?databaseId=${relatedDbId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ page_size: 100 })
+            });
+            if (relatedPagesResp.ok) {
+              const relatedPagesData = await relatedPagesResp.json();
+              const results = relatedPagesData.results || relatedPagesData.pages || [];
+              let titleProp = null;
+              let fallbackProp = null;
+              if (relatedPagesData.properties) {
+                for (const [k, v] of Object.entries(relatedPagesData.properties)) {
+                  const propValue = v as { type?: string };
+                  if (propValue && propValue.type === 'title') {
+                    titleProp = k;
+                  }
+                  // Fallback: primer campo de tipo rich_text o name
+                  if (!fallbackProp && (propValue.type === 'rich_text' || k.toLowerCase().includes('name'))) {
+                    fallbackProp = k;
+                  }
+                }
+              }
+              properties[key].relationOptions = results.map((page: any) => {
+                let displayName = '';
+                // 1. Buscar campo title
+                if (titleProp && page.properties?.[titleProp]?.title?.length) {
+                  displayName = page.properties[titleProp].title.map((t: any) => t.plain_text).join(' ').trim();
+                }
+                // 2. Si no hay title, buscar rich_text
+                if (!displayName && fallbackProp && page.properties?.[fallbackProp]?.rich_text?.length) {
+                  displayName = page.properties[fallbackProp].rich_text.map((t: any) => t.plain_text).join(' ').trim();
+                }
+                // 3. Si no hay, buscar cualquier propiedad tipo texto
+                if (!displayName && page.properties) {
+                  for (const v of Object.values(page.properties)) {
+                    // Acceso seguro a title
+                    if (v && typeof v === 'object' && 'title' in v && Array.isArray(v.title) && v.title.length > 0) {
+                      displayName = v.title.map((t: any) => t.plain_text).join(' ').trim();
+                      break;
+                    }
+                    // Acceso seguro a rich_text
+                    if (v && typeof v === 'object' && 'rich_text' in v && Array.isArray(v.rich_text) && v.rich_text.length > 0) {
+                      displayName = v.rich_text.map((t: any) => t.plain_text).join(' ').trim();
+                      break;
+                    }
+                  }
+                }
+                // 4. Si sigue vacío, usar el ID
+                if (!displayName) {
+                  displayName = page.id;
+                }
+                return {
+                  id: page.id,
+                  name: displayName
+                };
+              });
+              // ...existing code...
+            } else {
+              properties[key].relationOptions = [];
+            }
+          } catch (err) {
+            properties[key].relationOptions = [];
+          }
+        }
+      }
 
       const databaseInfo = {
         id: databaseId,
@@ -91,7 +178,7 @@ class NotionService {
 
       // Store schema for validation
       this.databaseSchema = databaseInfo;
-      console.log('🔍 Database schema loaded with select options:', this.databaseSchema);
+      
 
       return databaseInfo;
     } catch (error) {
@@ -100,16 +187,18 @@ class NotionService {
     }
   }
 
-  // ✅ NUEVA FUNCIÓN: Extraer opciones de campos select y multi_select
-  private extractSelectOptions(property: any): string[] {
+  // ✅ Mejorada: Extraer opciones de campos select, multi_select y status como objetos completos
+  private extractSelectOptions(property: any): any[] {
     if (property.type === 'select' && property.select?.options) {
-      return property.select.options.map((option: any) => option.name);
+      return property.select.options; // array de objetos completos
     }
-    
+
     if (property.type === 'multi_select' && property.multi_select?.options) {
-      return property.multi_select.options.map((option: any) => option.name);
+      return property.multi_select.options;
     }
-    
+    if (property.type === 'status' && property.status?.options) {
+      return property.status.options;
+    }
     return [];
   }
 
@@ -521,17 +610,19 @@ class NotionService {
         return;
       }
 
-      // Validate property type compatibility
-      const propertyType = schemaProperty.type;
-      console.log(`🔍 Validating "${key}" (${propertyType}):`, value);
+
 
       // Check if the property is read-only
       const readOnlyTypes = ['created_time', 'created_by', 'last_edited_time', 'last_edited_by', 'formula', 'rollup', 'auto_increment_id'];
-      if (readOnlyTypes.includes(propertyType)) {
-        console.warn(`⚠️ Property "${key}" is read-only (${propertyType})`);
+      if (readOnlyTypes.includes(schemaProperty.type)) {
+        console.warn(`⚠️ Property "${key}" is read-only (${schemaProperty.type})`);
         invalid.push(`Property "${key}" is read-only`);
         return;
       }
+
+      // Validate property type compatibility
+      const propertyType = schemaProperty.type;
+      console.log(`🔍 Validating "${key}" (${propertyType}):`, value);
 
       valid[key] = value;
     });
@@ -715,18 +806,31 @@ class NotionService {
       // Use schema type for more accurate conversion
       if (propertyType) {
         switch (propertyType) {
+          case 'relation':
+            // ...existing code...
+            const relValues = Array.isArray(value) ? value : [value];
+            notionProperties[key] = {
+              relation: relValues
+                .map((v: any) => {
+                  if (typeof v === 'string') return { id: v };
+                  if (v && typeof v === 'object' && v.id) return { id: v.id };
+                  return null;
+                })
+                .filter(Boolean)
+            };
+            break;
           case 'checkbox':
             notionProperties[key] = {
               checkbox: Boolean(value)
             };
             break;
-          
+
           case 'number':
             notionProperties[key] = {
               number: Number(value)
             };
             break;
-          
+
           case 'date':
             const dateValue = value instanceof Date ? value.toISOString().split('T')[0] : value;
             notionProperties[key] = {
@@ -735,22 +839,45 @@ class NotionService {
               }
             };
             break;
-          
+
           case 'select':
             notionProperties[key] = {
               select: {
-                name: String(value)
+                name: typeof value === 'object' && value !== null && value.name ? value.name : String(value)
               }
             };
             break;
-          
+          case 'status':
+            notionProperties[key] = {
+              status: {
+                name: typeof value === 'object' && value !== null && value.name ? value.name : String(value)
+              }
+            };
+            break;
           case 'multi_select':
             const multiSelectValues = Array.isArray(value) ? value : [value];
             notionProperties[key] = {
-              multi_select: multiSelectValues.map(v => ({ name: String(v) }))
+              multi_select: multiSelectValues.map(v => ({ name: typeof v === 'object' && v !== null && v.name ? v.name : String(v) }))
             };
             break;
-          
+          case 'files':
+            // Permitir subir archivos externos por URL
+            // value debe ser un array de objetos: [{ name, url }]
+            const filesArray = Array.isArray(value) ? value : [value];
+            notionProperties[key] = {
+              files: filesArray
+                .map((file: any) => {
+                  if (file && typeof file === 'object' && file.url) {
+                    return {
+                      name: file.name || 'Archivo',
+                      external: { url: file.url }
+                    };
+                  }
+                  return null;
+                })
+                .filter(Boolean)
+            };
+            break;
           case 'rich_text':
             notionProperties[key] = {
               rich_text: [
@@ -762,7 +889,7 @@ class NotionService {
               ]
             };
             break;
-          
+
           case 'title':
             notionProperties[key] = {
               title: [
@@ -774,25 +901,25 @@ class NotionService {
               ]
             };
             break;
-          
+
           case 'email':
             notionProperties[key] = {
               email: String(value)
             };
             break;
-          
+
           case 'phone_number':
             notionProperties[key] = {
               phone_number: String(value)
             };
             break;
-          
+
           case 'url':
             notionProperties[key] = {
               url: String(value)
             };
             break;
-          
+
           default:
             console.warn(`⚠️ Unsupported property type "${propertyType}" for field "${key}"`);
             break;

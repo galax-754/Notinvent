@@ -64,8 +64,7 @@ export async function connectToDatabase() {
       maxPoolSize: 10, // Máximo 10 conexiones en el pool
       serverSelectionTimeoutMS: 5000, // Timeout de 5 segundos
       socketTimeoutMS: 45000, // Timeout de socket de 45 segundos
-      bufferMaxEntries: 0, // Deshabilitar buffering
-      bufferCommands: false, // Deshabilitar buffering de comandos
+      tls: true,
     });
 
     // ✅ PASO 3: Conectar al cliente

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Plus, Edit2, Trash2, Save, X, Calendar, Clock, Eye, AlertTriangle, Activity, Package, Hash, Shield, MapPin, CalendarClock, DollarSign, Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone, CheckCircle } from 'lucide-react';
+import { Settings, Plus, Edit2, Trash2, Save, X, Calendar, Eye, AlertTriangle, Activity, Package, Hash, Shield, MapPin, CalendarClock, DollarSign, Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone, CheckCircle } from 'lucide-react';
 import { useNotion } from '../../contexts/NotionContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HelpTooltip } from '../common/HelpTooltip';
@@ -79,6 +79,86 @@ const AttentionSelectField: React.FC<{
         No se encontraron opciones predefinidas para este campo
       </div>
     </div>
+  );
+};
+
+// Componente reutilizable para campos select/multi-select/relation usando metadata real de Notion
+type Option = { id: string; name: string };
+
+const NotionSelectField: React.FC<{
+  field: any;
+  value: string | string[];
+  onChange: (value: any) => void;
+  disabled?: boolean;
+  database: any;
+}> = ({ field, value, onChange, disabled = false, database }) => {
+  // Obtener opciones reales desde la metadata de la base de datos
+  const property = database?.properties?.[field.fieldName];
+  let options: Option[] = [];
+  if (property) {
+    if (property.type === 'select' || property.type === 'status') {
+      options = property.select?.options || property.status?.options || [];
+    } else if (property.type === 'multi_select') {
+      options = property.multi_select?.options || [];
+    } else if (property.type === 'relation') {
+      // Para relación, mostrar los nombres de las páginas relacionadas
+      options = property.relationOptions || [];
+    }
+  }
+
+  // Multi-select
+  if (field.fieldType === 'multi_select') {
+    return (
+      <select
+        multiple
+        value={Array.isArray(value) ? value : []}
+        onChange={e => {
+          const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
+          onChange(selected);
+        }}
+        disabled={disabled}
+        className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
+      >
+        {options.map(opt => (
+          <option key={opt.id || opt.name} value={opt.name}>{opt.name}</option>
+        ))}
+      </select>
+    );
+  }
+
+  // Relation (puede ser multi o single)
+  if (field.fieldType === 'relation') {
+    return (
+      <select
+        multiple={property?.relation?.single_property === false}
+        value={Array.isArray(value) ? value : value ? [value] : []}
+        onChange={e => {
+          const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
+          onChange(selected);
+        }}
+        disabled={disabled}
+        className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
+      >
+        {options.map(opt => (
+          <option key={opt.id} value={opt.id}>{opt.name}</option>
+        ))}
+      </select>
+    );
+  }
+
+  // Select/Status
+  return (
+    <select
+      value={typeof value === 'string' ? value : ''}
+      onChange={e => onChange(e.target.value)}
+      disabled={disabled}
+      className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
+    >
+      <option value="">Seleccionar opción...</option>
+      {options.map(opt => (
+        <option key={opt.id || opt.name} value={opt.name}>{opt.name}</option>
+      ))}
+    </select>
   );
 };
 
@@ -440,17 +520,38 @@ export const ConfigurationView: React.FC = () => {
     }
   };
 
-  const updateScanTargetField = (index: number, updates: Partial<typeof scanFormData.targetFields[0]>) => {
+
+  // Tipos explícitos para los campos
+  type ScanTargetField = {
+    fieldName: string;
+    fieldType: string;
+    value: any;
+    enabled: boolean;
+    customDate?: string;
+  };
+
+  type DisplayField = {
+    fieldName: string;
+    fieldType: string;
+    displayName?: string;
+    enabled: boolean;
+    order?: number;
+    showInSummary?: boolean;
+    showInAttention?: boolean;
+    icon?: string;
+  };
+
+  const updateScanTargetField = (index: number, updates: Partial<ScanTargetField>) => {
     if (!scanFormData.targetFields) return;
-    
+
     const newFields = [...scanFormData.targetFields];
     newFields[index] = { ...newFields[index], ...updates };
     setScanFormData({ ...scanFormData, targetFields: newFields });
   };
 
-  const updateDisplayField = (index: number, updates: Partial<typeof displayFormData.displayFields[0]>) => {
+  const updateDisplayField = (index: number, updates: Partial<DisplayField>) => {
     if (!displayFormData.displayFields) return;
-    
+
     const newFields = [...displayFormData.displayFields];
     newFields[index] = { ...newFields[index], ...updates };
     setDisplayFormData({ ...displayFormData, displayFields: newFields });
@@ -495,35 +596,26 @@ export const ConfigurationView: React.FC = () => {
     ];
   };
 
-  const getSelectOptions = (fieldName: string) => {
-    // Opciones comunes para campos de selección
-    const commonOptions = {
-      status: ['Active', 'Inactive', 'Maintenance', 'Retired'],
-      condition: ['Excellent', 'Good', 'Fair', 'Poor'],
-      priority: ['High', 'Medium', 'Low'],
-      category: ['Electronics', 'Furniture', 'Equipment', 'Supplies'],
-      location: ['Office A', 'Office B', 'Storage', 'Warehouse']
-    };
 
-    const fieldLower = fieldName.toLowerCase();
-    
-    if (fieldLower.includes('status') || fieldLower.includes('estado')) {
-      return commonOptions.status;
-    } else if (fieldLower.includes('condition') || fieldLower.includes('condicion')) {
-      return commonOptions.condition;
-    } else if (fieldLower.includes('priority') || fieldLower.includes('prioridad')) {
-      return commonOptions.priority;
-    } else if (fieldLower.includes('category') || fieldLower.includes('categoria')) {
-      return commonOptions.category;
-    } else if (fieldLower.includes('location') || fieldLower.includes('ubicacion')) {
-      return commonOptions.location;
-    }
-    
-    return [];
-  };
-
+  // Reemplazar renderScanFieldValue para usar NotionSelectField en select, multi_select, status y relation
   const renderScanFieldValue = (field: any, index: number) => {
     switch (field.fieldType) {
+      case 'files':
+        return (
+          <input
+            type="text"
+            placeholder="Pega aquí la URL pública del archivo (Drive, Dropbox, etc.)"
+            value={field.value && Array.isArray(field.value) ? field.value.map((f: { url: string }) => f.url).join(', ') : (field.value?.url || '')}
+            onChange={e => {
+              // Permitir múltiples URLs separadas por coma
+              const urls = e.target.value.split(',').map(u => u.trim()).filter(u => u);
+              const fileObjs = urls.map(url => ({ name: url.split('/').pop() || 'Archivo', url }));
+              updateScanTargetField(index, { value: fileObjs });
+            }}
+            className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
+            disabled={!field.enabled}
+          />
+        );
       case 'checkbox':
         return (
           <select
@@ -536,7 +628,7 @@ export const ConfigurationView: React.FC = () => {
             <option value="false">{t('common.unchecked')}</option>
           </select>
         );
-      
+        
       case 'date':
         const dateOptions = getDateOptions(field.fieldName);
         return (
@@ -564,50 +656,21 @@ export const ConfigurationView: React.FC = () => {
             )}
           </div>
         );
-      
-      case 'select':
-        const selectOptions = getSelectOptions(field.fieldName);
-        return (
-          <div className="space-y-2">
-            {selectOptions.length > 0 ? (
-              <select
-                value={field.value}
-                onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
-                className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-                disabled={!field.enabled}
-              >
-                <option value="">{t('config.selectOption')}</option>
-                {selectOptions.map(option => (
-                  <option key={option} value={option}>{option}</option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="text"
-                value={field.value}
-                onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
-                className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-                placeholder={t('config.enterSelectValue')}
-                disabled={!field.enabled}
-              />
-            )}
-          </div>
-        );
 
+      case 'select':
       case 'multi_select':
+      case 'status':
+      case 'relation':
         return (
-          <input
-            type="text"
-            value={Array.isArray(field.value) ? field.value.join(', ') : field.value}
-            onChange={(e) => updateScanTargetField(index, { 
-              value: e.target.value.split(',').map(v => v.trim()).filter(v => v) 
-            })}
-            className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-            placeholder={t('config.enterMultipleValues')}
+          <NotionSelectField
+            field={field}
+            value={field.value}
+            onChange={val => updateScanTargetField(index, { value: val })}
             disabled={!field.enabled}
+            database={database}
           />
         );
-      
+
       case 'number':
         return (
           <input
@@ -654,7 +717,7 @@ export const ConfigurationView: React.FC = () => {
             disabled={!field.enabled}
           />
         );
-      
+
       default:
         return (
           <input
@@ -964,7 +1027,7 @@ export const ConfigurationView: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      
+
                       {config.autoSave && (
                         <div className="flex items-center space-x-1 text-xs text-green-600 mt-2">
                           <div className="w-2 h-2 bg-green-500 rounded-full" />

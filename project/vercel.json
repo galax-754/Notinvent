@@ -1,33 +1,4 @@
 {
-  "functions": {
-    "api/notion/database.js": {
-      "runtime": "nodejs18.x"
-    },
-    "api/notion/pages/[pageId].js": {
-      "runtime": "nodejs18.x"
-    },
-    "api/auth/login.js": {
-      "runtime": "nodejs18.x"
-    },
-    "api/auth/register.js": {
-      "runtime": "nodejs18.x"
-    },
-    "api/auth/logout.js": {
-      "runtime": "nodejs18.x"
-    },
-    "api/auth/verify.js": {
-      "runtime": "nodejs18.x"
-    },
-    "api/auth/refresh.js": {
-      "runtime": "nodejs18.x"
-    },
-    "api/user/config.js": {
-      "runtime": "nodejs18.x"
-    },
-    "api/health.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/notion/database",
