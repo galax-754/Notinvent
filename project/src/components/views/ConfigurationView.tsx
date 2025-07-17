@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Select from 'react-select';
 import { Settings, Plus, Edit2, Trash2, Save, X, Calendar, Eye, AlertTriangle, Activity, Package, Hash, Shield, MapPin, CalendarClock, DollarSign, Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone, CheckCircle } from 'lucide-react';
 import { useNotion } from '../../contexts/NotionContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -101,64 +102,205 @@ const NotionSelectField: React.FC<{
     } else if (property.type === 'multi_select') {
       options = property.multi_select?.options || [];
     } else if (property.type === 'relation') {
-      // Para relación, mostrar los nombres de las páginas relacionadas
+      
       options = property.relationOptions || [];
     }
   }
 
+  // Adaptar opciones para react-select
+  const selectOptions = options.map(opt => ({ value: opt.id || opt.name, label: opt.name }));
+
   // Multi-select
   if (field.fieldType === 'multi_select') {
     return (
-      <select
-        multiple
-        value={Array.isArray(value) ? value : []}
-        onChange={e => {
-          const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
-          onChange(selected);
+      <Select
+        isMulti
+        isDisabled={disabled}
+        value={selectOptions.filter(opt => Array.isArray(value) && value.includes(opt.label))}
+        onChange={selected => onChange(Array.isArray(selected) ? selected.map(opt => opt.label) : [])}
+        options={selectOptions}
+        classNamePrefix="react-select"
+        styles={{
+          control: (base, state) => ({
+            ...base,
+            backgroundColor: state.isDisabled ? '#f3f4f6' : 'var(--tw-bg-opacity,1) #fff',
+            borderColor: '#d1d5db',
+            minHeight: '2.25rem',
+            fontSize: '0.875rem',
+            ...(document.documentElement.classList.contains('dark') && {
+              backgroundColor: '#1f2937',
+              color: '#fff',
+              borderColor: '#374151',
+            })
+          }),
+          menu: base => ({
+            ...base,
+            backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+            color: document.documentElement.classList.contains('dark') ? '#fff' : '#111',
+          }),
+          option: (base, state) => {
+            const isDark = document.documentElement.classList.contains('dark');
+            let color = isDark ? '#f9fafb' : '#111'; // color más claro en dark
+            if (state.isSelected) color = isDark ? '#f9fafb' : '#1e293b';
+            if (state.isFocused && !state.isSelected) color = isDark ? '#e0e7ef' : '#1e293b';
+            return {
+              ...base,
+              backgroundColor: state.isSelected
+                ? (isDark ? '#374151' : '#e0e7ef')
+                : (state.isFocused ? (isDark ? '#111827' : '#f3f4f6') : 'inherit'),
+              color,
+              fontWeight: state.isSelected ? 700 : 400,
+              textShadow: isDark ? '0 1px 2px #111' : undefined,
+            };
+          },
+          singleValue: (base) => ({
+            ...base,
+            color: document.documentElement.classList.contains('dark') ? '#fff' : '#111',
+          }),
+          placeholder: (base) => ({
+            ...base,
+            color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280',
+          }),
+          input: (base) => ({
+            ...base,
+            color: document.documentElement.classList.contains('dark') ? '#fff' : '#111',
+          }),
         }}
-        disabled={disabled}
-        className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-      >
-        {options.map(opt => (
-          <option key={opt.id || opt.name} value={opt.name}>{opt.name}</option>
-        ))}
-      </select>
+        placeholder="Seleccionar opción..."
+      />
     );
   }
 
   // Relation (puede ser multi o single)
   if (field.fieldType === 'relation') {
+    const isMulti = property?.relation?.single_property === false;
     return (
-      <select
-        multiple={property?.relation?.single_property === false}
-        value={Array.isArray(value) ? value : value ? [value] : []}
-        onChange={e => {
-          const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
-          onChange(selected);
+      <Select
+        isMulti={isMulti}
+        isDisabled={disabled}
+        value={selectOptions.filter(opt =>
+          Array.isArray(value)
+            ? value.includes(opt.value) || value.includes(opt.label)
+            : value === opt.value || value === opt.label
+        )}
+        onChange={selected => {
+          if (isMulti) {
+            onChange(Array.isArray(selected) ? selected.map(opt => opt.value) : []);
+          } else {
+            if (selected && !Array.isArray(selected) && typeof selected === 'object' && 'value' in selected) {
+              onChange(selected.value);
+            } else {
+              onChange('');
+            }
+          }
         }}
-        disabled={disabled}
-        className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-xs sm:text-sm"
-      >
-        {options.map(opt => (
-          <option key={opt.id} value={opt.id}>{opt.name}</option>
-        ))}
-      </select>
+        options={selectOptions}
+        classNamePrefix="react-select"
+        styles={{
+          control: (base, state) => ({
+            ...base,
+            backgroundColor: state.isDisabled ? '#f3f4f6' : 'var(--tw-bg-opacity,1) #fff',
+            borderColor: '#d1d5db',
+            minHeight: '2.25rem',
+            fontSize: '0.875rem',
+            ...(document.documentElement.classList.contains('dark') && {
+              backgroundColor: '#1f2937',
+              color: '#fff',
+              borderColor: '#374151',
+            })
+          }),
+          menu: base => ({
+            ...base,
+            backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+            color: document.documentElement.classList.contains('dark') ? '#fff' : '#111',
+          }),
+          option: (base, state) => {
+            const isDark = document.documentElement.classList.contains('dark');
+            let color = isDark ? '#fff' : '#111';
+            if (state.isSelected) color = isDark ? '#fff' : '#1e293b';
+            if (state.isFocused && !state.isSelected) color = isDark ? '#e0e7ef' : '#1e293b';
+            return {
+              ...base,
+              backgroundColor: state.isSelected
+                ? (isDark ? '#374151' : '#e0e7ef')
+                : (state.isFocused ? (isDark ? '#111827' : '#f3f4f6') : 'inherit'),
+              color,
+              fontWeight: state.isSelected ? 700 : 400,
+            };
+          },
+          singleValue: (base) => ({
+            ...base,
+            color: document.documentElement.classList.contains('dark') ? '#fff' : '#111',
+          }),
+          placeholder: (base) => ({
+            ...base,
+            color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280',
+          }),
+          input: (base) => ({
+            ...base,
+            color: document.documentElement.classList.contains('dark') ? '#fff' : '#111',
+          }),
+        }}
+        placeholder="Seleccionar opción..."
+      />
     );
   }
 
   // Select/Status
   return (
-    <select
-      value={typeof value === 'string' ? value : ''}
-      onChange={e => onChange(e.target.value)}
-      disabled={disabled}
-      className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800 dark:border-gray-700 text-xs sm:text-sm dark:text-gray-100"
-    >
-      <option value="">Seleccionar opción...</option>
-      {options.map(opt => (
-        <option key={opt.id || opt.name} value={opt.name}>{opt.name}</option>
-      ))}
-    </select>
+    <Select
+      isDisabled={disabled}
+      value={selectOptions.find(opt => opt.label === value || opt.value === value) || null}
+      onChange={selected => onChange(selected ? selected.label : '')}
+      options={selectOptions}
+      classNamePrefix="react-select"
+      styles={{
+        control: (base, state) => ({
+          ...base,
+          backgroundColor: state.isDisabled ? '#f3f4f6' : 'var(--tw-bg-opacity,1) #fff',
+          borderColor: '#d1d5db',
+          minHeight: '2.25rem',
+          fontSize: '0.875rem',
+          ...(document.documentElement.classList.contains('dark') && {
+            backgroundColor: '#1f2937',
+            color: '#fff',
+            borderColor: '#374151',
+          })
+        }),
+        menu: base => ({
+          ...base,
+          backgroundColor: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+          color: document.documentElement.classList.contains('dark') ? '#fff' : '#111',
+        }),
+        option: (base, state) => {
+          const isDark = document.documentElement.classList.contains('dark');
+          let color = isDark ? '#fff' : '#111';
+          if (state.isSelected) color = isDark ? '#fff' : '#1e293b';
+          if (state.isFocused && !state.isSelected) color = isDark ? '#e0e7ef' : '#1e293b';
+          return {
+            ...base,
+            backgroundColor: state.isSelected
+              ? (isDark ? '#374151' : '#e0e7ef')
+              : (state.isFocused ? (isDark ? '#111827' : '#f3f4f6') : 'inherit'),
+            color,
+            fontWeight: state.isSelected ? 700 : 400,
+          };
+        },
+        singleValue: (base) => ({
+          ...base,
+          color: document.documentElement.classList.contains('dark') ? '#fff' : '#111',
+        }),
+        placeholder: (base) => ({
+          ...base,
+          color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280',
+        }),
+        input: (base) => ({
+          ...base,
+          color: document.documentElement.classList.contains('dark') ? '#fff' : '#111',
+        }),
+      }}
+      placeholder="Seleccionar opción..."
+    />
   );
 };
 
@@ -664,7 +806,7 @@ const renderScanFieldValue = (field: any, index: number) => {
           onChange={val => updateScanTargetField(index, { value: val })}
           disabled={!field.enabled}
           database={database}
-          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white"
+          
         />
       );
     case 'number':
