@@ -1,4 +1,69 @@
 import React, { useState } from 'react';
+
+// Helper para mostrar el nombre y número del artículo de forma legible, soportando relaciones
+// Se puede pasar la metadata de la base de datos como segundo argumento
+export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string {
+  if (!item) return 'Sin nombre';
+  if (typeof item === 'string') {
+    // Si es una fecha ISO, no mostrarla como nombre
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(item)) return 'Sin nombre';
+    return item;
+  }
+  // Busca campos típicos de nombre
+  const posiblesClaves = ['Nombre', 'Name', 'nombre', 'name', 'Título', 'Title', 'título', 'title'];
+  for (const clave of posiblesClaves) {
+    if (item[clave]) {
+      const valor = item[clave];
+      // Si es string directo
+      if (typeof valor === 'string') return valor;
+      // Si es array de objetos tipo Notion (title, rich_text, etc)
+      if (Array.isArray(valor) && valor.length > 0) {
+        if (typeof valor[0] === 'string') return valor[0];
+        if (valor[0] && typeof valor[0] === 'object' && valor[0].plain_text) return valor.map((v:any) => v.plain_text).join(' ');
+        if (valor[0] && typeof valor[0] === 'object' && valor[0].text && valor[0].text.content) return valor.map((v:any) => v.text.content).join(' ');
+        // Si es relación: array de objetos {id: ...}
+        if (valor[0] && typeof valor[0] === 'object' && valor[0].id && databaseMeta && databaseMeta.properties && databaseMeta.properties[clave] && databaseMeta.properties[clave].relationOptions) {
+          // Buscar los nombres de las páginas relacionadas
+          const relationOptions = databaseMeta.properties[clave].relationOptions;
+          const nombresRelacionados = valor.map((rel: any) => {
+            const found = relationOptions.find((opt: any) => opt.id === rel.id);
+            return found ? found.name : rel.id;
+          });
+          return nombresRelacionados.join(', ');
+        }
+      }
+      // Si es objeto tipo Notion (title: [{plain_text: ...}])
+      if (typeof valor === 'object' && valor !== null) {
+        if (Array.isArray(valor.title) && valor.title.length > 0 && valor.title[0].plain_text) return valor.title.map((v:any) => v.plain_text).join(' ');
+        if (valor.plain_text) return valor.plain_text;
+        if (valor.text && valor.text.content) return valor.text.content;
+      }
+    }
+  }
+  // Si tiene number
+  if ('number' in item && item.number) return String(item.number);
+  // Si tiene algún campo string
+  for (const key of Object.keys(item)) {
+    if (typeof item[key] === 'string' && item[key]) {
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(item[key])) continue;
+      return item[key];
+    }
+    if (Array.isArray(item[key]) && item[key].length > 0 && typeof item[key][0] === 'string') {
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(item[key][0])) continue;
+      return item[key][0];
+    }
+    // Si es relación y hay metadata
+    if (Array.isArray(item[key]) && item[key].length > 0 && item[key][0] && typeof item[key][0] === 'object' && item[key][0].id && databaseMeta && databaseMeta.properties && databaseMeta.properties[key] && databaseMeta.properties[key].relationOptions) {
+      const relationOptions = databaseMeta.properties[key].relationOptions;
+      const nombresRelacionados = item[key].map((rel: any) => {
+        const found = relationOptions.find((opt: any) => opt.id === rel.id);
+        return found ? found.name : rel.id;
+      });
+      return nombresRelacionados.join(', ');
+    }
+  }
+  return 'Sin nombre';
+}
 import Select from 'react-select';
 import { Settings, Plus, Edit2, Trash2, Save, X, Calendar, Eye, AlertTriangle, Activity, Package, Hash, Shield, MapPin, CalendarClock, DollarSign, Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone, CheckCircle } from 'lucide-react';
 import { useNotion } from '../../contexts/NotionContext';

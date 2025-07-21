@@ -86,6 +86,7 @@ export interface ScanHistory {
   configurationUsed: string;
   fieldsModified: string[];
   user?: string;
+  itemProperties?: Record<string, any>; // Propiedades completas del artículo
 }
 
 export interface NotionConfig {

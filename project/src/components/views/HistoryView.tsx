@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { History, Search, Calendar, User, FileText, Filter } from 'lucide-react';
+// Importar el helper desde ConfigurationView
+import { getArticuloNombreYNumero } from './ConfigurationView';
 import { useNotion } from '../../contexts/NotionContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HelpTooltip } from '../common/HelpTooltip';
 import { format } from 'date-fns';
 
 export const HistoryView: React.FC = () => {
-  const { scanHistory } = useNotion();
+  const { scanHistory, database } = useNotion();
   const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterConfig, setFilterConfig] = useState('');
@@ -175,9 +177,11 @@ export const HistoryView: React.FC = () => {
                         </div>
                         <div>
                           <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                            {typeof entry.itemName === 'object' && entry.itemName !== null && 'number' in entry.itemName
-                              ? `Objeto a editar Id: ${(entry.itemName as { number?: string | number }).number ?? entry.itemId}`
-                              : entry.itemName}
+                            {entry.itemProperties
+                              ? getArticuloNombreYNumero(entry.itemProperties, database)
+                              : (typeof entry.itemName === 'object' && entry.itemName !== null
+                                  ? getArticuloNombreYNumero(entry.itemName, database)
+                                  : entry.itemName)}
                           </h3>
                         </div>
                       </div>

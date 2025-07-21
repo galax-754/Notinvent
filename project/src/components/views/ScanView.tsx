@@ -5,6 +5,7 @@ import {
   Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone 
 } from 'lucide-react';
 import { useNotion } from '../../contexts/NotionContext';
+import { getArticuloNombreYNumero } from './ConfigurationView';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HelpTooltip } from '../common/HelpTooltip';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -286,13 +287,17 @@ export const ScanView: React.FC = () => {
       if (success) {
         toast.success(t('toast.itemUpdated'));
         const itemId = safeStringValue(itemToUpdate.properties['ID'] || itemToUpdate.properties['Nombre'] || itemToUpdate.id);
-        const itemName = safeStringValue(itemToUpdate.properties['Name'] || itemToUpdate.properties['Nombre'] || itemToUpdate.properties['ID']);
+        // Extrae el nombre del artículo usando el helper
+        const nombreArticulo = getArticuloNombreYNumero(itemToUpdate.properties, database);
+        // Actualiza la propiedad 'Nombre del articulo' en el objeto de propiedades
+        const updatedProperties = { ...itemToUpdate.properties, ['Nombre del articulo']: nombreArticulo };
         addScanHistory({
           itemId,
-          itemName,
+          itemName: nombreArticulo,
           scanTime: new Date(),
           configurationUsed: config.name,
           fieldsModified,
+          itemProperties: updatedProperties, // Guarda todas las propiedades del artículo, incluyendo el nombre extraído
         });
         setScannedCode('');
         setCurrentItem(null);

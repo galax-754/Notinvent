@@ -100,10 +100,9 @@ class NotionService {
           properties[key].relation = {
             database_id: prop.relation.database_id
           };
-          // Obtener páginas relacionadas y exponerlas como relationOptions
+          // Obtener páginas relacionadas y exponerlas como relationOptions (solo los primeros 100)
           try {
             const relatedDbId = prop.relation.database_id;
-            // Cambiar a POST para obtener páginas de la base relacionada
             const relatedPagesResp = await fetch(`${this.baseURL}/database?databaseId=${relatedDbId}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
