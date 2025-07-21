@@ -7,6 +7,20 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          notion: ['@notionhq/client'],
+          ui: ['lucide-react', 'react-hot-toast', 'react-select']
+        }
+      }
+    }
+  },
   server: {
     proxy: {
       '/api': {
