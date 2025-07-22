@@ -20,7 +20,7 @@
     "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.344.0",
-    "mongodb": "^6.17.0",
+    "mongodb": "^8.0.0",
     "papaparse": "^5.4.1",
     "postcss": "^8.4.35",
     "react": "^18.3.1",
