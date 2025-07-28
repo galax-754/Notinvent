@@ -29,7 +29,7 @@ export const AuthView: React.FC = () => {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            © 2024 Notion Inventory Manager. Todos los derechos reservados.
+            © 2025 Notion Inventory Manager. Todos los derechos reservados.
           </p>
         </div>
       </div>
