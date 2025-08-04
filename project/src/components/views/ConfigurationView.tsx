@@ -177,12 +177,6 @@ const NotionSelectField: React.FC<{
   const property = database?.properties?.[field.fieldName];
   let options: Option[] = [];
   
-  console.log(`🔧 NotionSelectField for "${field.fieldName}":`, {
-    fieldType: field.fieldType,
-    propertyType: property?.type,
-    hasProperty: !!property
-  });
-  
   if (property) {
     if (property.type === 'select' || property.type === 'status') {
       options = property.select?.options || property.status?.options || [];
@@ -190,14 +184,6 @@ const NotionSelectField: React.FC<{
       options = property.multi_select?.options || [];
     } else if (property.type === 'relation') {
       options = property.relationOptions || [];
-      console.log(`🔍 RELATION OPTIONS for "${field.fieldName}":`, {
-        totalOptions: options.length,
-        firstFew: options.slice(0, 3).map(opt => ({ 
-          id: opt.id?.substring(0, 8), 
-          name: opt.name,
-          nameIsId: opt.name === opt.id 
-        }))
-      });
     }
   }
 
@@ -210,7 +196,6 @@ const NotionSelectField: React.FC<{
       value: opt.id, 
       label: opt.name || opt.id 
     }));
-    console.log('🔍 RELATION SELECT OPTIONS:', selectOptions);
   } else {
     // Para otros tipos, usar name tanto para value como label
     selectOptions = options.map(opt => ({ 
