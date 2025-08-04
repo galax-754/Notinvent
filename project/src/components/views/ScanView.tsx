@@ -581,12 +581,13 @@ export const ScanView: React.FC = () => {
         {scanConfigurations.length > 0 && (
           <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/70 shadow-sm mb-6">
             <div className="flex items-center space-x-2 mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+              <label htmlFor="scan-configuration-select" className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                 {t('scan.selectConfiguration')}
               </label>
               <HelpTooltip content={t('help.scan.selectConfiguration')} />
             </div>
             <select
+              id="scan-configuration-select"
               value={selectedConfig}
               onChange={(e) => setSelectedConfig(e.target.value)}
               className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-700 rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-gray-900 dark:text-white transition-all duration-200 text-sm sm:text-base"

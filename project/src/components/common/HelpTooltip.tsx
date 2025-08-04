@@ -44,6 +44,8 @@ export const HelpTooltip: React.FC<HelpTooltipProps> = ({ content, position = 't
         onBlur={() => setIsVisible(false)}
         className="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800 rounded-full"
         type="button"
+        aria-label="Mostrar ayuda"
+        title="Mostrar información de ayuda"
       >
         <HelpCircle className="w-4 h-4" />
       </button>

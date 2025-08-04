@@ -78,7 +78,9 @@ const AttentionSelectField: React.FC<{
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
-}> = ({ fieldName, value, onChange, disabled = false }) => {
+  label?: string;
+  id?: string;
+}> = ({ fieldName, value, onChange, disabled = false, label, id }) => {
   const { getFieldOptions } = useNotion();
   const [options, setOptions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);

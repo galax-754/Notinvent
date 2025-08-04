@@ -59,6 +59,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               type="button"
               onClick={onTogglePassword}
               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
+              aria-label={isPassword ? "Mostrar contraseña" : "Ocultar contraseña"}
+              title={isPassword ? "Mostrar contraseña" : "Ocultar contraseña"}
             >
               {isPassword ? (
                 <EyeOff className="w-5 h-5" />
