@@ -3,11 +3,12 @@ import { Package, Scan, Clock, TrendingUp, AlertTriangle, CheckCircle, Hash, Shi
 import { useNotion } from '../../contexts/NotionContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HelpTooltip } from '../common/HelpTooltip';
+import { getArticuloNombreYNumero } from './ConfigurationView';
 
 
 
 export const DashboardView: React.FC = () => {
-  const { items, scanHistory, isLoading, refreshDatabase, getItemsNeedingAttention, activeDisplayConfig } = useNotion();
+  const { items, scanHistory, isLoading, refreshDatabase, getItemsNeedingAttention, activeDisplayConfig, database } = useNotion();
   const { t} = useLanguage();
 
   // ✅ SOLUCIÓN: Función helper para convertir valores a string de forma segura
@@ -598,7 +599,11 @@ export const DashboardView: React.FC = () => {
                     <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {activity.itemName}
+                        {activity.itemProperties
+                          ? getArticuloNombreYNumero(activity.itemProperties, database)
+                          : (typeof activity.itemName === 'object' && activity.itemName !== null
+                              ? getArticuloNombreYNumero(activity.itemName, database)
+                              : activity.itemName)}
                       </p>
                       <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                         {t('dashboard.scannedWith')} {activity.configurationUsed}
