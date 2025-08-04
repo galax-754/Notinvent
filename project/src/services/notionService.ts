@@ -103,70 +103,105 @@ class NotionService {
           // Obtener páginas relacionadas y exponerlas como relationOptions (solo los primeros 100)
           try {
             const relatedDbId = prop.relation.database_id;
+            console.log(`🔍 LOADING RELATION OPTIONS for field "${key}" from database: ${relatedDbId}`);
+            
             const relatedPagesResp = await fetch(`${this.baseURL}/database?databaseId=${relatedDbId}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ page_size: 100 })
             });
+            
             if (relatedPagesResp.ok) {
               const relatedPagesData = await relatedPagesResp.json();
               const results = relatedPagesData.results || relatedPagesData.pages || [];
-              let titleProp = null;
-              let fallbackProp = null;
-              if (relatedPagesData.properties) {
-                for (const [k, v] of Object.entries(relatedPagesData.properties)) {
-                  const propValue = v as { type?: string };
-                  if (propValue && propValue.type === 'title') {
-                    titleProp = k;
-                  }
-                  // Fallback: primer campo de tipo rich_text o name
-                  if (!fallbackProp && (propValue.type === 'rich_text' || k.toLowerCase().includes('name'))) {
-                    fallbackProp = k;
-                  }
+              
+              console.log(`📊 RELATION DATA for "${key}":`, {
+                totalPages: results.length,
+                databaseSchema: relatedPagesData.properties ? Object.keys(relatedPagesData.properties) : 'No schema'
+              });
+
+              // Función mejorada para extraer título de página
+              const getPageTitle = (page: any, pageIndex: number) => {
+                if (!page.properties) {
+                  console.warn(`⚠️ Page ${pageIndex} has no properties:`, page.id);
+                  return page.id;
                 }
-              }
-              properties[key].relationOptions = results.map((page: any) => {
+
                 let displayName = '';
-                // 1. Buscar campo title
-                if (titleProp && page.properties?.[titleProp]?.title?.length) {
-                  displayName = page.properties[titleProp].title.map((t: any) => t.plain_text).join(' ').trim();
-                }
-                // 2. Si no hay title, buscar rich_text
-                if (!displayName && fallbackProp && page.properties?.[fallbackProp]?.rich_text?.length) {
-                  displayName = page.properties[fallbackProp].rich_text.map((t: any) => t.plain_text).join(' ').trim();
-                }
-                // 3. Si no hay, buscar cualquier propiedad tipo texto
-                if (!displayName && page.properties) {
-                  for (const v of Object.values(page.properties)) {
-                    // Acceso seguro a title
-                    if (v && typeof v === 'object' && 'title' in v && Array.isArray(v.title) && v.title.length > 0) {
-                      displayName = v.title.map((t: any) => t.plain_text).join(' ').trim();
-                      break;
-                    }
-                    // Acceso seguro a rich_text
-                    if (v && typeof v === 'object' && 'rich_text' in v && Array.isArray(v.rich_text) && v.rich_text.length > 0) {
-                      displayName = v.rich_text.map((t: any) => t.plain_text).join(' ').trim();
-                      break;
+                
+                // 1. Buscar específicamente campos de tipo 'title'
+                for (const [propName, propValue] of Object.entries(page.properties)) {
+                  const prop = propValue as any;
+                  if (prop && prop.type === 'title' && prop.title && Array.isArray(prop.title) && prop.title.length > 0) {
+                    displayName = prop.title.map((t: any) => t.plain_text || '').join(' ').trim();
+                    if (displayName) {
+                      console.log(`✅ Found title for page ${pageIndex} in field "${propName}": "${displayName}"`);
+                      return displayName;
                     }
                   }
                 }
-                // 4. Si sigue vacío, usar el ID
-                if (!displayName) {
-                  displayName = page.id;
+
+                // 2. Buscar campos ricos de texto como fallback
+                for (const [propName, propValue] of Object.entries(page.properties)) {
+                  const prop = propValue as any;
+                  if (prop && prop.type === 'rich_text' && prop.rich_text && Array.isArray(prop.rich_text) && prop.rich_text.length > 0) {
+                    displayName = prop.rich_text.map((t: any) => t.plain_text || '').join(' ').trim();
+                    if (displayName) {
+                      console.log(`⚠️ Using rich_text fallback for page ${pageIndex} in field "${propName}": "${displayName}"`);
+                      return displayName;
+                    }
+                  }
                 }
+
+                // 3. Buscar campos que contengan "name" en el nombre
+                for (const [propName, propValue] of Object.entries(page.properties)) {
+                  if (propName.toLowerCase().includes('name') || propName.toLowerCase().includes('nombre')) {
+                    const prop = propValue as any;
+                    if (prop && prop.type === 'rich_text' && prop.rich_text && Array.isArray(prop.rich_text) && prop.rich_text.length > 0) {
+                      displayName = prop.rich_text.map((t: any) => t.plain_text || '').join(' ').trim();
+                      if (displayName) {
+                        console.log(`⚠️ Using name field fallback for page ${pageIndex} in field "${propName}": "${displayName}"`);
+                        return displayName;
+                      }
+                    }
+                  }
+                }
+
+                // 4. Debug: mostrar todas las propiedades disponibles si no se encuentra título
+                console.warn(`❌ NO TITLE FOUND for page ${pageIndex} (ID: ${page.id}). Available properties:`, 
+                  Object.entries(page.properties).map(([name, prop]: [string, any]) => ({
+                    name,
+                    type: prop?.type,
+                    hasContent: !!(prop?.title?.length || prop?.rich_text?.length)
+                  }))
+                );
+
+                return page.id; // Fallback al ID si no se encuentra nada
+              };
+
+              properties[key].relationOptions = results.map((page: any, index: number) => {
+                const name = getPageTitle(page, index);
                 return {
                   id: page.id,
-                  name: displayName
+                  name: name
                 };
               });
-              console.log(`🔍 RELATION OPTIONS LOADED for ${key}:`, properties[key].relationOptions.length, 'items');
-              // ...existing code...
+
+              console.log(`✅ RELATION OPTIONS LOADED for "${key}":`, {
+                total: properties[key].relationOptions.length,
+                sample: properties[key].relationOptions.slice(0, 3).map((opt: any) => ({ 
+                  id: opt.id?.substring(0, 8) || 'no-id', 
+                  name: opt.name 
+                })),
+                withRealNames: properties[key].relationOptions.filter((opt: any) => opt.name !== opt.id).length
+              });
+
             } else {
-              console.log(`⚠️ RELATION OPTIONS - No results for ${key}`);
+              console.error(`❌ RELATION OPTIONS - Failed to fetch for "${key}". Status: ${relatedPagesResp.status}`);
               properties[key].relationOptions = [];
             }
           } catch (err) {
-            console.error(`❌ RELATION OPTIONS ERROR for ${key}:`, err);
+            console.error(`❌ RELATION OPTIONS ERROR for "${key}":`, err);
             properties[key].relationOptions = [];
           }
         }

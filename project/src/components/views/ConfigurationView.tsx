@@ -176,14 +176,28 @@ const NotionSelectField: React.FC<{
   // Obtener opciones reales desde la metadata de la base de datos
   const property = database?.properties?.[field.fieldName];
   let options: Option[] = [];
+  
+  console.log(`🔧 NotionSelectField for "${field.fieldName}":`, {
+    fieldType: field.fieldType,
+    propertyType: property?.type,
+    hasProperty: !!property
+  });
+  
   if (property) {
     if (property.type === 'select' || property.type === 'status') {
       options = property.select?.options || property.status?.options || [];
     } else if (property.type === 'multi_select') {
       options = property.multi_select?.options || [];
     } else if (property.type === 'relation') {
-      
       options = property.relationOptions || [];
+      console.log(`🔍 RELATION OPTIONS for "${field.fieldName}":`, {
+        totalOptions: options.length,
+        firstFew: options.slice(0, 3).map(opt => ({ 
+          id: opt.id?.substring(0, 8), 
+          name: opt.name,
+          nameIsId: opt.name === opt.id 
+        }))
+      });
     }
   }
 
