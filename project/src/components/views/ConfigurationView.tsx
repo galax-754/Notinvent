@@ -25,8 +25,14 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
         if (valor[0] && typeof valor[0] === 'object' && valor[0].id && databaseMeta && databaseMeta.properties && databaseMeta.properties[clave] && databaseMeta.properties[clave].relationOptions) {
           // Buscar los nombres de las páginas relacionadas
           const relationOptions = databaseMeta.properties[clave].relationOptions;
+          console.log(`🔍 RELATION DEBUG - Campo: ${clave}`, {
+            valor,
+            relationOptions,
+            databaseMeta: databaseMeta.properties[clave]
+          });
           const nombresRelacionados = valor.map((rel: any) => {
             const found = relationOptions.find((opt: any) => opt.id === rel.id);
+            console.log(`🔍 RELATION LOOKUP - ID: ${rel.id}, Found:`, found);
             return found ? found.name : rel.id;
           });
           return nombresRelacionados.join(', ');
@@ -114,11 +120,18 @@ const AttentionSelectField: React.FC<{
   if (options.length > 0) {
     return (
       <div className="space-y-2">
+        {label && (
+          <label htmlFor={id} className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+            {label}
+          </label>
+        )}
         <select
+          id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 text-sm"
+          aria-label={label || `Seleccionar ${fieldName}`}
         >
           <option value="">Seleccionar opción...</option>
           {options.map(option => (
@@ -175,7 +188,22 @@ const NotionSelectField: React.FC<{
   }
 
   // Adaptar opciones para react-select
-  const selectOptions = options.map(opt => ({ value: opt.id || opt.name, label: opt.name }));
+  let selectOptions: { value: string; label: string }[] = [];
+  
+  if (property?.type === 'relation') {
+    // Para relaciones, usar el ID como value y el name como label
+    selectOptions = options.map(opt => ({ 
+      value: opt.id, 
+      label: opt.name || opt.id 
+    }));
+    console.log('🔍 RELATION SELECT OPTIONS:', selectOptions);
+  } else {
+    // Para otros tipos, usar name tanto para value como label
+    selectOptions = options.map(opt => ({ 
+      value: opt.id || opt.name, 
+      label: opt.name 
+    }));
+  }
 
   // Multi-select
   if (field.fieldType === 'multi_select') {
@@ -245,11 +273,16 @@ const NotionSelectField: React.FC<{
       <Select
         isMulti={isMulti}
         isDisabled={disabled}
-        value={selectOptions.filter(opt =>
-          Array.isArray(value)
-            ? value.includes(opt.value) || value.includes(opt.label)
-            : value === opt.value || value === opt.label
-        )}
+        value={selectOptions.filter(opt => {
+          console.log('🔍 FILTERING OPTION:', { opt, value, matches: Array.isArray(value) ? value.includes(opt.value) : value === opt.value });
+          if (Array.isArray(value)) {
+            // Para multi-relation, buscar solo por ID
+            return value.includes(opt.value);
+          } else {
+            // Para single-relation, buscar solo por ID  
+            return value === opt.value;
+          }
+        })}
         onChange={selected => {
           if (isMulti) {
             onChange(Array.isArray(selected) ? selected.map(opt => opt.value) : []);
@@ -830,6 +863,7 @@ const renderScanFieldValue = (field: any, index: number) => {
           onChange={(e) => updateScanTargetField(index, { value: e.target.value === 'true' })}
           className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white"
           disabled={!field.enabled}
+          aria-label={`Valor para ${field.fieldName}`}
         >
           <option value="true">{t('common.checked')}</option>
           <option value="false">{t('common.unchecked')}</option>
@@ -844,6 +878,7 @@ const renderScanFieldValue = (field: any, index: number) => {
             onChange={(e) => updateScanTargetField(index, { value: e.target.value })}
             className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-900/70 text-xs sm:text-sm text-gray-900 dark:text-white"
             disabled={!field.enabled}
+            aria-label={`Fecha para ${field.fieldName}`}
           >
             {dateOptions.map(option => (
               <option key={option.value} value={option.value}>
