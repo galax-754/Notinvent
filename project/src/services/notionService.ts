@@ -661,12 +661,15 @@ class NotionService {
 
       console.log('🔍 UPDATE DEBUG - Full request body:', JSON.stringify(requestBody, null, 2));
 
-      const response = await fetch(`${this.baseURL}/pages/${pageId}`, {
+      const response = await fetch(`${this.baseURL}/update-page`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({
+          pageId: pageId,
+          properties: notionProperties
+        })
       });
 
       if (!response.ok) {
