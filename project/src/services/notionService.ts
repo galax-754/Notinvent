@@ -159,11 +159,14 @@ class NotionService {
                   name: displayName
                 };
               });
+              console.log(`🔍 RELATION OPTIONS LOADED for ${key}:`, properties[key].relationOptions.length, 'items');
               // ...existing code...
             } else {
+              console.log(`⚠️ RELATION OPTIONS - No results for ${key}`);
               properties[key].relationOptions = [];
             }
           } catch (err) {
+            console.error(`❌ RELATION OPTIONS ERROR for ${key}:`, err);
             properties[key].relationOptions = [];
           }
         }
