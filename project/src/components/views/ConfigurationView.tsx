@@ -22,7 +22,7 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
   }
   // Busca campos típicos de nombre
   console.log(`🔍 GET ARTICULO NOMBRE - Searching for name fields in keys:`, Object.keys(item));
-  const posiblesClaves = ['Nombre', 'Name', 'nombre', 'name', 'Título', 'Title', 'título', 'title'];
+  const posiblesClaves = ['Nombre del articulo', 'Nombre del artículo', 'Nombre', 'Name', 'nombre', 'name', 'Título', 'Title', 'título', 'title'];
   for (const clave of posiblesClaves) {
     console.log(`🔍 GET ARTICULO NOMBRE - Checking key: "${clave}"`);
     if (item[clave]) {
