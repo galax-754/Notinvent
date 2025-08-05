@@ -446,7 +446,7 @@ export const ScanView: React.FC = () => {
     return 'N/A';
   };
 
-  const formatFieldValue = (value: any, fieldType: string) => {
+  const formatFieldValue = (value: any, fieldType: string, fieldName?: string, database?: any) => {
     if (value === null || value === undefined) return 'N/A';
     
     switch (fieldType) {
@@ -508,14 +508,10 @@ export const ScanView: React.FC = () => {
           const relationNames = value.map(rel => {
             if (typeof rel === 'object' && rel !== null && rel.id) {
               // Intentar usar metadata de relaciones si está disponible
-              if (database && database.properties) {
-                const relationField = Object.keys(database.properties).find(key => {
-                  const prop = database.properties[key];
-                  return prop.type === 'relation' && prop.relationOptions;
-                });
-                if (relationField) {
-                  const prop = database.properties[relationField];
-                  const relationOption = prop.relationOptions?.find((opt: any) => opt.id === rel.id);
+              if (database && database.properties && fieldName) {
+                const prop = database.properties[fieldName];
+                if (prop && prop.type === 'relation' && prop.relationOptions) {
+                  const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel.id);
                   if (relationOption && relationOption.name) {
                     return relationOption.name;
                   }
@@ -529,6 +525,16 @@ export const ScanView: React.FC = () => {
           return relationNames.length > 0 ? relationNames.join(', ') : 'N/A';
         }
         if (typeof value === 'object' && value !== null && value.id) {
+          // Para relaciones individuales
+          if (database && database.properties && fieldName) {
+            const prop = database.properties[fieldName];
+            if (prop && prop.type === 'relation' && prop.relationOptions) {
+              const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
+              if (relationOption && relationOption.name) {
+                return relationOption.name;
+              }
+            }
+          }
           return `ID: ${value.id}`;
         }
         return extractName(value);
@@ -627,11 +633,11 @@ export const ScanView: React.FC = () => {
                         </span>
                       ) : field.fieldType === 'select' ? (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
-                          {formatFieldValue(value, field.fieldType)}
+                          {formatFieldValue(value, field.fieldType, field.fieldName, database)}
                         </span>
                       ) : (
                         <p className="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate">
-                          {formatFieldValue(value, field.fieldType)}
+                          {formatFieldValue(value, field.fieldType, field.fieldName, database)}
                         </p>
                       )}
                     </div>
@@ -657,7 +663,7 @@ export const ScanView: React.FC = () => {
                       <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">{field.displayName}</p>
                     </div>
                     <p className="text-sm text-gray-900 dark:text-gray-100 ml-5">
-                      {formatFieldValue(value, field.fieldType)}
+                      {formatFieldValue(value, field.fieldType, field.fieldName, database)}
                     </p>
                   </div>
                 );
@@ -699,14 +705,14 @@ export const ScanView: React.FC = () => {
           <div>
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">{t('scan.id')}</p>
             <p className="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate">
-              {formatFieldValue(currentItem.properties['ID'] || currentItem.properties['Id Busqueda'] || currentItem.properties['id'], 'title')}
+              {formatFieldValue(currentItem.properties['ID'] || currentItem.properties['Id Busqueda'] || currentItem.properties['id'], 'title', 'ID', database)}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">{t('scan.condition')}</p>
               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(currentItem.properties['Condition'] || currentItem.properties['Estado'])}`}>
-                {formatFieldValue(currentItem.properties['Condition'] || currentItem.properties['Estado'], 'select')}
+                {formatFieldValue(currentItem.properties['Condition'] || currentItem.properties['Estado'], 'select', 'Condition', database)}
               </span>
             </div>
             <div>
@@ -741,7 +747,7 @@ export const ScanView: React.FC = () => {
             }
             
             const fieldType = database?.properties[fieldName]?.type || 'rich_text';
-            const formattedValue = formatFieldValue(value, fieldType);
+            const formattedValue = formatFieldValue(value, fieldType, fieldName, database);
             
             // Solo mostrar si hay un valor válido
             if (formattedValue === 'N/A' || formattedValue === '' || formattedValue === null) {
