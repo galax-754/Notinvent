@@ -325,13 +325,45 @@ export const ScanView: React.FC = () => {
     }
   };
 
-  const getConditionText = (condition: string) => {
-    switch (condition?.toLowerCase()) {
-      case 'excellent': return t('common.excellent');
-      case 'good': return t('common.good');
-      case 'fair': return t('common.fair');
-      case 'poor': return t('common.poor');
-      default: return t('common.unknown');
+  const getConditionText = (condition: any) => {
+    let conditionText = '';
+    
+    // Extraer el texto de la condición según el formato de Notion
+    if (typeof condition === 'string') {
+      conditionText = condition;
+    } else if (typeof condition === 'object' && condition !== null) {
+      if (condition.name) {
+        conditionText = condition.name;
+      } else if (condition.select && condition.select.name) {
+        conditionText = condition.select.name;
+      } else if (condition.status && condition.status.name) {
+        conditionText = condition.status.name;
+      } else {
+        // Usar extractName para obtener el valor
+        conditionText = extractName(condition);
+      }
+    }
+    
+    // Convertir a texto legible según el idioma
+    switch (conditionText?.toLowerCase()) {
+      case 'excellent':
+      case 'excelentes condiciones':
+      case 'excelente': 
+        return t('common.excellent');
+      case 'good':
+      case 'buenas condiciones':
+      case 'bueno': 
+        return t('common.good');
+      case 'fair':
+      case 'condiciones regulares':
+      case 'regular': 
+        return t('common.fair');
+      case 'poor':
+      case 'malas condiciones':
+      case 'malo': 
+        return t('common.poor');
+      default: 
+        return conditionText || t('common.unknown');
     }
   };
 
@@ -345,73 +377,210 @@ export const ScanView: React.FC = () => {
   const extractName = (val: any): string => {
     if (val === null || val === undefined) return 'N/A';
     if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') return val.toString();
+    
     if (Array.isArray(val)) {
       if (val.length === 0) return 'N/A';
-      if (typeof val[0] === 'object' && val[0] && val[0].name) {
-        return val.map((v: any) => extractName(v)).join(', ');
-      }
-      if (typeof val[0] === 'object' && val[0] && val[0].plain_text) {
-        return val.map((v: any) => v.plain_text).join(', ');
-      }
-      if (typeof val[0] === 'string') return val.join(', ');
-      if (typeof val[0] === 'number') return val.join(', ');
-      return `${val.length} elemento(s)`;
+      
+      // Para arrays, extraer nombres de cada elemento
+      const extractedNames = val.map((v: any) => {
+        if (typeof v === 'object' && v !== null) {
+          if (v.name) return v.name;
+          if (v.plain_text) return v.plain_text;
+          if (v.text && v.text.content) return v.text.content;
+          if (v.id && !v.name) return `ID: ${v.id}`;
+          return extractName(v);
+        }
+        return v.toString();
+      }).filter(name => name && name !== 'N/A');
+      
+      return extractedNames.length > 0 ? extractedNames.join(', ') : 'N/A';
     }
+    
     if (typeof val === 'object') {
+      // Orden de prioridad para extraer información legible
       if (val.name) return val.name;
       if (val.plain_text) return val.plain_text;
-      if (val.title) return val.title;
+      if (val.text && val.text.content) return val.text.content;
+      if (val.title) {
+        if (Array.isArray(val.title)) {
+          return val.title.map((t: any) => t.plain_text || t.text?.content || t).join('');
+        }
+        return val.title;
+      }
+      
+      // Para campos de número con prefijo (como ID auto-generado)
       if (val.number !== undefined && val.prefix !== undefined) {
         if (val.prefix) return `${val.prefix}-${val.number}`;
-        return val.number;
+        return val.number.toString();
       }
-      if (val.number !== undefined) return val.number;
+      if (val.number !== undefined) return val.number.toString();
+      
+      // Para checkboxes
+      if (typeof val.checkbox === 'boolean') return val.checkbox ? '✓ Sí' : '✗ No';
       if (typeof val.checked === 'boolean') return val.checked ? '✓ Sí' : '✗ No';
       if (typeof val.value === 'boolean') return val.value ? '✓ Sí' : '✗ No';
-      if (val.id && !val.name) return val.id;
+      
+      // Para URLs
       if (val.url) return val.url;
+      
+      // Para elementos con color y nombre (como status/select)
       if (val.color && val.name) return val.name;
+      
+      // Si solo tenemos ID, mostrar de forma más amigable
+      if (val.id && !val.name) return `ID: ${val.id}`;
+      
+      // Último recurso: buscar recursivamente
       for (const key of Object.keys(val)) {
-        const result = extractName(val[key]);
-        if (result !== 'N/A') return result;
+        if (key !== 'id') { // Evitar mostrar solo el ID si hay otros campos
+          const result = extractName(val[key]);
+          if (result !== 'N/A' && !result.startsWith('ID:')) return result;
+        }
       }
+      
+      // Si solo encontramos ID, mostrarlo
+      if (val.id) return `ID: ${val.id}`;
+      
       return 'N/A';
     }
+    
     return 'N/A';
   };
 
   const formatFieldValue = (value: any, fieldType: string) => {
     if (value === null || value === undefined) return 'N/A';
+    
     switch (fieldType) {
       case 'checkbox':
+        // Manejo mejorado para checkboxes de Notion
+        if (typeof value === 'boolean') return value ? '✓ Sí' : '✗ No';
+        if (typeof value === 'object' && value !== null) {
+          if ('checkbox' in value) return value.checkbox ? '✓ Sí' : '✗ No';
+          if ('checked' in value) return value.checked ? '✓ Sí' : '✗ No';
+        }
         return value ? '✓ Sí' : '✗ No';
+        
       case 'date':
         return formatDateForDisplay(value);
+        
       case 'number':
-        return typeof value === 'number' ? value.toLocaleString() : value;
-      case 'multi_select':
+        // Manejo mejorado para números de Notion
+        if (typeof value === 'number') return value.toLocaleString();
+        if (typeof value === 'object' && value !== null && 'number' in value) {
+          return typeof value.number === 'number' ? value.number.toLocaleString() : value.number;
+        }
+        return value;
+        
       case 'select':
+      case 'status':
+        // Manejo mejorado para select/status - extraer nombre legible
+        if (typeof value === 'object' && value !== null) {
+          if (value.name) return value.name;
+          if (value.id && !value.name) {
+            // Si solo tenemos ID, intentar usar getArticuloNombreYNumero para buscar nombre
+            return getArticuloNombreYNumero(value, database) !== 'Sin nombre' 
+              ? getArticuloNombreYNumero(value, database) 
+              : `ID: ${value.id}`;
+          }
+        }
         return extractName(value);
+        
+      case 'multi_select':
+        // Manejo mejorado para multi-select
+        if (Array.isArray(value)) {
+          const names = value.map(item => {
+            if (typeof item === 'object' && item !== null) {
+              if (item.name) return item.name;
+              if (item.id && !item.name) {
+                return getArticuloNombreYNumero(item, database) !== 'Sin nombre' 
+                  ? getArticuloNombreYNumero(item, database) 
+                  : `ID: ${item.id}`;
+              }
+            }
+            return extractName(item);
+          }).filter(name => name !== 'N/A');
+          return names.length > 0 ? names.join(', ') : 'N/A';
+        }
+        return extractName(value);
+        
+      case 'relation':
+        // Manejo mejorado para relaciones - usar getArticuloNombreYNumero
+        if (Array.isArray(value)) {
+          const relationNames = value.map(rel => {
+            if (typeof rel === 'object' && rel !== null && rel.id) {
+              // Intentar usar metadata de relaciones si está disponible
+              if (database && database.properties) {
+                const relationField = Object.keys(database.properties).find(key => {
+                  const prop = database.properties[key];
+                  return prop.type === 'relation' && prop.relationOptions;
+                });
+                if (relationField) {
+                  const prop = database.properties[relationField];
+                  const relationOption = prop.relationOptions?.find((opt: any) => opt.id === rel.id);
+                  if (relationOption && relationOption.name) {
+                    return relationOption.name;
+                  }
+                }
+              }
+              // Fallback a mostrar ID de forma legible
+              return `ID: ${rel.id}`;
+            }
+            return extractName(rel);
+          }).filter(name => name !== 'N/A');
+          return relationNames.length > 0 ? relationNames.join(', ') : 'N/A';
+        }
+        if (typeof value === 'object' && value !== null && value.id) {
+          return `ID: ${value.id}`;
+        }
+        return extractName(value);
+        
+      case 'title':
+      case 'rich_text':
+        // Manejo mejorado para texto - usar getArticuloNombreYNumero si es apropiado
+        const textResult = getArticuloNombreYNumero(value, database);
+        return textResult !== 'Sin nombre' ? textResult : extractName(value);
+        
       case 'url':
         return value ? (
           <a href={value} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-300 hover:underline truncate">
             {value}
           </a>
         ) : 'N/A';
+        
       case 'email':
         return value ? (
           <a href={`mailto:${value}`} className="text-blue-600 dark:text-blue-300 hover:underline">
             {value}
           </a>
         ) : 'N/A';
+        
       case 'phone_number':
         return value ? (
           <a href={`tel:${value}`} className="text-blue-600 dark:text-blue-300 hover:underline">
             {value}
           </a>
         ) : 'N/A';
+        
+      case 'files':
+        // Manejo para archivos
+        if (Array.isArray(value) && value.length > 0) {
+          return value.map((file, index) => (
+            <a 
+              key={index}
+              href={file.url || file.file?.url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-blue-600 dark:text-blue-300 hover:underline block truncate"
+            >
+              {file.name || file.file?.url?.split('/').pop() || 'Archivo'}
+            </a>
+          ));
+        }
+        return 'N/A';
+        
       default:
-        return extractName(value);
+        // Para tipos no especificados, usar getArticuloNombreYNumero si es apropiado
+        const defaultResult = getArticuloNombreYNumero(value, database);
+        return defaultResult !== 'Sin nombre' ? defaultResult : extractName(value);
     }
   };
 
@@ -524,20 +693,20 @@ export const ScanView: React.FC = () => {
           <div>
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">{t('scan.name')}</p>
             <p className="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate">
-              {safeStringValue(currentItem.properties['Name'] || currentItem.properties['Nombre'] || 'N/A')}
+              {getArticuloNombreYNumero(currentItem.properties, database)}
             </p>
           </div>
           <div>
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">{t('scan.id')}</p>
             <p className="font-medium text-gray-900 dark:text-gray-100 text-sm sm:text-base truncate">
-              {safeStringValue(currentItem.properties['ID'] || currentItem.properties['Nombre'] || 'N/A')}
+              {formatFieldValue(currentItem.properties['ID'] || currentItem.properties['Id Busqueda'] || currentItem.properties['id'], 'title')}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">{t('scan.condition')}</p>
-              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(currentItem.properties['Condition'])}`}>
-                {getConditionText(currentItem.properties['Condition'])}
+              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(currentItem.properties['Condition'] || currentItem.properties['Estado'])}`}>
+                {formatFieldValue(currentItem.properties['Condition'] || currentItem.properties['Estado'], 'select')}
               </span>
             </div>
             <div>
@@ -556,6 +725,40 @@ export const ScanView: React.FC = () => {
               })()}
             </div>
           </div>
+        </div>
+      </div>
+      
+      {/* Mostrar información adicional en una vista expandida cuando no hay configuración activa */}
+      <div className="p-3 sm:p-4 bg-white/80 dark:bg-gray-800/90 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/70 rounded-lg lg:rounded-xl">
+        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-2 mb-3">
+          Información del Artículo
+        </h4>
+        <div className="space-y-2 max-h-64 overflow-y-auto">
+          {Object.entries(currentItem.properties).map(([fieldName, value]) => {
+            // Saltar campos que ya mostramos arriba
+            if (['Name', 'Nombre', 'ID', 'Id Busqueda', 'Condition', 'Estado'].includes(fieldName)) {
+              return null;
+            }
+            
+            const fieldType = database?.properties[fieldName]?.type || 'rich_text';
+            const formattedValue = formatFieldValue(value, fieldType);
+            
+            // Solo mostrar si hay un valor válido
+            if (formattedValue === 'N/A' || formattedValue === '' || formattedValue === null) {
+              return null;
+            }
+            
+            return (
+              <div key={fieldName} className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="flex items-start justify-between">
+                  <p className="text-xs text-gray-600 dark:text-gray-300 font-medium">{fieldName}</p>
+                </div>
+                <div className="text-sm text-gray-900 dark:text-gray-100 mt-1 break-words">
+                  {formattedValue}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
