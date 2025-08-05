@@ -3,24 +3,55 @@ import React, { useState } from 'react';
 // Helper para mostrar el nombre y número del artículo de forma legible, soportando relaciones
 // Se puede pasar la metadata de la base de datos como segundo argumento
 export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string {
-  if (!item) return 'Sin nombre';
+  console.log(`🔍 GET ARTICULO NOMBRE - Input item:`, item);
+  console.log(`🔍 GET ARTICULO NOMBRE - Database meta available:`, !!databaseMeta);
+  
+  if (!item) {
+    console.log(`🔍 GET ARTICULO NOMBRE - No item provided, returning 'Sin nombre'`);
+    return 'Sin nombre';
+  }
+  
   if (typeof item === 'string') {
     // Si es una fecha ISO, no mostrarla como nombre
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(item)) return 'Sin nombre';
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(item)) {
+      console.log(`🔍 GET ARTICULO NOMBRE - Item is ISO date string, returning 'Sin nombre'`);
+      return 'Sin nombre';
+    }
+    console.log(`🔍 GET ARTICULO NOMBRE - Item is string: "${item}"`);
     return item;
   }
   // Busca campos típicos de nombre
+  console.log(`🔍 GET ARTICULO NOMBRE - Searching for name fields in keys:`, Object.keys(item));
   const posiblesClaves = ['Nombre', 'Name', 'nombre', 'name', 'Título', 'Title', 'título', 'title'];
   for (const clave of posiblesClaves) {
+    console.log(`🔍 GET ARTICULO NOMBRE - Checking key: "${clave}"`);
     if (item[clave]) {
       const valor = item[clave];
+      console.log(`🔍 GET ARTICULO NOMBRE - Found value for "${clave}":`, valor, typeof valor);
+      
       // Si es string directo
-      if (typeof valor === 'string') return valor;
+      if (typeof valor === 'string') {
+        console.log(`🔍 GET ARTICULO NOMBRE - Returning string value: "${valor}"`);
+        return valor;
+      }
+      
       // Si es array de objetos tipo Notion (title, rich_text, etc)
       if (Array.isArray(valor) && valor.length > 0) {
-        if (typeof valor[0] === 'string') return valor[0];
-        if (valor[0] && typeof valor[0] === 'object' && valor[0].plain_text) return valor.map((v:any) => v.plain_text).join(' ');
-        if (valor[0] && typeof valor[0] === 'object' && valor[0].text && valor[0].text.content) return valor.map((v:any) => v.text.content).join(' ');
+        console.log(`🔍 GET ARTICULO NOMBRE - Found array, first element:`, valor[0]);
+        if (typeof valor[0] === 'string') {
+          console.log(`🔍 GET ARTICULO NOMBRE - Returning first string from array: "${valor[0]}"`);
+          return valor[0];
+        }
+        if (valor[0] && typeof valor[0] === 'object' && valor[0].plain_text) {
+          const resultado = valor.map((v:any) => v.plain_text).join(' ');
+          console.log(`🔍 GET ARTICULO NOMBRE - Returning plain_text: "${resultado}"`);
+          return resultado;
+        }
+        if (valor[0] && typeof valor[0] === 'object' && valor[0].text && valor[0].text.content) {
+          const resultado = valor.map((v:any) => v.text.content).join(' ');
+          console.log(`🔍 GET ARTICULO NOMBRE - Returning text.content: "${resultado}"`);
+          return resultado;
+        }
         // Si es relación: array de objetos {id: ...}
         if (valor[0] && typeof valor[0] === 'object' && valor[0].id && databaseMeta && databaseMeta.properties && databaseMeta.properties[clave] && databaseMeta.properties[clave].relationOptions) {
           // Buscar los nombres de las páginas relacionadas
@@ -35,27 +66,55 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
             console.log(`🔍 RELATION LOOKUP - ID: ${rel.id}, Found:`, found);
             return found ? found.name : rel.id;
           });
-          return nombresRelacionados.join(', ');
+          const resultado = nombresRelacionados.join(', ');
+          console.log(`🔍 GET ARTICULO NOMBRE - Returning relation names: "${resultado}"`);
+          return resultado;
         }
       }
       // Si es objeto tipo Notion (title: [{plain_text: ...}])
       if (typeof valor === 'object' && valor !== null) {
-        if (Array.isArray(valor.title) && valor.title.length > 0 && valor.title[0].plain_text) return valor.title.map((v:any) => v.plain_text).join(' ');
-        if (valor.plain_text) return valor.plain_text;
-        if (valor.text && valor.text.content) return valor.text.content;
+        console.log(`🔍 GET ARTICULO NOMBRE - Found object for "${clave}":`, valor);
+        if (Array.isArray(valor.title) && valor.title.length > 0 && valor.title[0].plain_text) {
+          const resultado = valor.title.map((v:any) => v.plain_text).join(' ');
+          console.log(`🔍 GET ARTICULO NOMBRE - Returning title plain_text: "${resultado}"`);
+          return resultado;
+        }
+        if (valor.plain_text) {
+          console.log(`🔍 GET ARTICULO NOMBRE - Returning direct plain_text: "${valor.plain_text}"`);
+          return valor.plain_text;
+        }
+        if (valor.text && valor.text.content) {
+          console.log(`🔍 GET ARTICULO NOMBRE - Returning text.content: "${valor.text.content}"`);
+          return valor.text.content;
+        }
       }
     }
   }
   // Si tiene number
-  if ('number' in item && item.number) return String(item.number);
+  console.log(`🔍 GET ARTICULO NOMBRE - Checking for number field...`);
+  if ('number' in item && item.number) {
+    console.log(`🔍 GET ARTICULO NOMBRE - Found number: ${item.number}`);
+    return String(item.number);
+  }
+  
   // Si tiene algún campo string
+  console.log(`🔍 GET ARTICULO NOMBRE - Checking all fields for strings...`);
   for (const key of Object.keys(item)) {
+    console.log(`🔍 GET ARTICULO NOMBRE - Checking field "${key}":`, item[key], typeof item[key]);
     if (typeof item[key] === 'string' && item[key]) {
-      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(item[key])) continue;
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(item[key])) {
+        console.log(`🔍 GET ARTICULO NOMBRE - Skipping date field "${key}"`);
+        continue;
+      }
+      console.log(`🔍 GET ARTICULO NOMBRE - Found string field "${key}": "${item[key]}"`);
       return item[key];
     }
     if (Array.isArray(item[key]) && item[key].length > 0 && typeof item[key][0] === 'string') {
-      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(item[key][0])) continue;
+      if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(item[key][0])) {
+        console.log(`🔍 GET ARTICULO NOMBRE - Skipping date array field "${key}"`);
+        continue;
+      }
+      console.log(`🔍 GET ARTICULO NOMBRE - Found string array field "${key}": "${item[key][0]}"`);
       return item[key][0];
     }
     // Si es relación y hay metadata
@@ -63,11 +122,15 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
       const relationOptions = databaseMeta.properties[key].relationOptions;
       const nombresRelacionados = item[key].map((rel: any) => {
         const found = relationOptions.find((opt: any) => opt.id === rel.id);
+        console.log(`🔍 GET ARTICULO NOMBRE - Relation lookup for "${key}": ID ${rel.id} -> Found:`, found);
         return found ? found.name : rel.id;
       });
-      return nombresRelacionados.join(', ');
+      const resultado = nombresRelacionados.join(', ');
+      console.log(`🔍 GET ARTICULO NOMBRE - Returning relation result: "${resultado}"`);
+      return resultado;
     }
   }
+  console.log(`🔍 GET ARTICULO NOMBRE - No valid name found, returning 'Sin nombre'`);
   return 'Sin nombre';
 }
 import Select from 'react-select';

@@ -116,17 +116,30 @@ class NotionService {
 
               // Función mejorada para extraer título de página
               const getPageTitle = (page: any) => {
+                console.log(`🔍 EXTRACTING TITLE - Page ID: ${page.id}`);
+                console.log(`🔍 EXTRACTING TITLE - Page properties:`, JSON.stringify(page.properties, null, 2));
+                
                 if (!page.properties) {
+                  console.log(`🔍 EXTRACTING TITLE - No properties found, returning ID`);
                   return page.id;
                 }
 
                 let displayName = '';
                 
                 // 1. Buscar específicamente campos de tipo 'title'
-                for (const [, propValue] of Object.entries(page.properties)) {
+                console.log(`🔍 EXTRACTING TITLE - Searching for title fields...`);
+                for (const [propName, propValue] of Object.entries(page.properties)) {
                   const prop = propValue as any;
+                  console.log(`🔍 EXTRACTING TITLE - Property "${propName}":`, {
+                    type: prop?.type,
+                    hasTitle: !!prop?.title,
+                    titleLength: prop?.title?.length,
+                    titleContent: prop?.title
+                  });
+                  
                   if (prop && prop.type === 'title' && prop.title && Array.isArray(prop.title) && prop.title.length > 0) {
                     displayName = prop.title.map((t: any) => t.plain_text || '').join(' ').trim();
+                    console.log(`🔍 EXTRACTING TITLE - Found title field "${propName}": "${displayName}"`);
                     if (displayName) {
                       return displayName;
                     }
@@ -134,10 +147,19 @@ class NotionService {
                 }
 
                 // 2. Buscar campos ricos de texto como fallback
-                for (const [, propValue] of Object.entries(page.properties)) {
+                console.log(`🔍 EXTRACTING TITLE - No title found, searching rich_text fields...`);
+                for (const [propName, propValue] of Object.entries(page.properties)) {
                   const prop = propValue as any;
+                  console.log(`🔍 EXTRACTING TITLE - Rich text property "${propName}":`, {
+                    type: prop?.type,
+                    hasRichText: !!prop?.rich_text,
+                    richTextLength: prop?.rich_text?.length,
+                    richTextContent: prop?.rich_text
+                  });
+                  
                   if (prop && prop.type === 'rich_text' && prop.rich_text && Array.isArray(prop.rich_text) && prop.rich_text.length > 0) {
                     displayName = prop.rich_text.map((t: any) => t.plain_text || '').join(' ').trim();
+                    console.log(`🔍 EXTRACTING TITLE - Found rich_text field "${propName}": "${displayName}"`);
                     if (displayName) {
                       return displayName;
                     }
@@ -145,11 +167,19 @@ class NotionService {
                 }
 
                 // 3. Buscar campos que contengan "name" en el nombre
+                console.log(`🔍 EXTRACTING TITLE - No rich_text found, searching name-containing fields...`);
                 for (const [propName, propValue] of Object.entries(page.properties)) {
+                  console.log(`🔍 EXTRACTING TITLE - Checking property "${propName}" for name match...`);
                   if (propName.toLowerCase().includes('name') || propName.toLowerCase().includes('nombre')) {
                     const prop = propValue as any;
+                    console.log(`🔍 EXTRACTING TITLE - Name-containing property "${propName}":`, {
+                      type: prop?.type,
+                      content: prop
+                    });
+                    
                     if (prop && prop.type === 'rich_text' && prop.rich_text && Array.isArray(prop.rich_text) && prop.rich_text.length > 0) {
                       displayName = prop.rich_text.map((t: any) => t.plain_text || '').join(' ').trim();
+                      console.log(`🔍 EXTRACTING TITLE - Found name field "${propName}": "${displayName}"`);
                       if (displayName) {
                         return displayName;
                       }
@@ -157,16 +187,20 @@ class NotionService {
                   }
                 }
 
+                console.log(`🔍 EXTRACTING TITLE - No valid title found, returning page ID: ${page.id}`);
                 return page.id; // Fallback al ID si no se encuentra nada
               };
 
               properties[key].relationOptions = results.map((page: any) => {
                 const name = getPageTitle(page);
+                console.log(`🔍 RELATION MAPPING - Page ${page.id} mapped to name: "${name}"`);
                 return {
                   id: page.id,
                   name: name
                 };
               });
+
+              console.log(`🔍 RELATION OPTIONS FINAL - Field "${key}" relation options:`, properties[key].relationOptions);
 
 
             } else {
