@@ -514,6 +514,19 @@ export const ScanView: React.FC = () => {
           fieldProperty: (database?.properties && fieldName) ? database.properties[fieldName] : 'not found'
         });
 
+        if (database?.properties && fieldName) {
+          const prop = database.properties[fieldName];
+          console.log('🔍 RELATION DEBUG - DETAILED PROPERTY INFO:', {
+            fieldName,
+            propExists: !!prop,
+            propType: prop?.type,
+            hasRelationOptions: !!(prop?.relationOptions),
+            relationOptionsCount: prop?.relationOptions?.length || 0,
+            relationOptionsSample: prop?.relationOptions?.slice(0, 3) || 'none',
+            fullProperty: prop
+          });
+        }
+
         // Manejo mejorado para relaciones - usar getArticuloNombreYNumero
         if (Array.isArray(value)) {
           console.log('🔍 RELATION DEBUG - Processing array of relations:', value);
