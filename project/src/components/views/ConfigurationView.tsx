@@ -20,6 +20,44 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
     console.log(`🔍 GET ARTICULO NOMBRE - Item is string: "${item}"`);
     return item;
   }
+
+  // ✅ NUEVO: Función auxiliar para combinar nombre con ID de búsqueda
+  const combinarNombreConId = (nombre: string): string => {
+    // Buscar el campo id_busqueda
+    const idBusquedaFields = ['id_busqueda', 'Id_busqueda', 'ID_busqueda', 'id_búsqueda', 'Id_búsqueda', 'ID_búsqueda'];
+    let idBusqueda = null;
+    
+    for (const idField of idBusquedaFields) {
+      if (item[idField]) {
+        const valor = item[idField];
+        if (typeof valor === 'string' || typeof valor === 'number') {
+          idBusqueda = valor;
+          break;
+        }
+        if (Array.isArray(valor) && valor.length > 0) {
+          if (typeof valor[0] === 'string' || typeof valor[0] === 'number') {
+            idBusqueda = valor[0];
+            break;
+          }
+          if (valor[0] && typeof valor[0] === 'object' && valor[0].plain_text) {
+            idBusqueda = valor[0].plain_text;
+            break;
+          }
+        }
+        if (typeof valor === 'object' && valor !== null && valor.plain_text) {
+          idBusqueda = valor.plain_text;
+          break;
+        }
+      }
+    }
+    
+    if (idBusqueda) {
+      console.log(`🔍 GET ARTICULO NOMBRE - Found ID busqueda: "${idBusqueda}"`);
+      return `${nombre} (ID: ${idBusqueda})`;
+    }
+    
+    return nombre;
+  };
   // Busca campos típicos de nombre
   console.log(`🔍 GET ARTICULO NOMBRE - Searching for name fields in keys:`, Object.keys(item));
   const posiblesClaves = ['Nombre del articulo', 'Nombre del artículo', 'Nombre', 'Name', 'nombre', 'name', 'Título', 'Title', 'título', 'title'];
@@ -32,7 +70,7 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
       // Si es string directo
       if (typeof valor === 'string') {
         console.log(`🔍 GET ARTICULO NOMBRE - Returning string value: "${valor}"`);
-        return valor;
+        return combinarNombreConId(valor);
       }
       
       // Si es array de objetos tipo Notion (title, rich_text, etc)
@@ -40,17 +78,17 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
         console.log(`🔍 GET ARTICULO NOMBRE - Found array, first element:`, valor[0]);
         if (typeof valor[0] === 'string') {
           console.log(`🔍 GET ARTICULO NOMBRE - Returning first string from array: "${valor[0]}"`);
-          return valor[0];
+          return combinarNombreConId(valor[0]);
         }
         if (valor[0] && typeof valor[0] === 'object' && valor[0].plain_text) {
           const resultado = valor.map((v:any) => v.plain_text).join(' ');
           console.log(`🔍 GET ARTICULO NOMBRE - Returning plain_text: "${resultado}"`);
-          return resultado;
+          return combinarNombreConId(resultado);
         }
         if (valor[0] && typeof valor[0] === 'object' && valor[0].text && valor[0].text.content) {
           const resultado = valor.map((v:any) => v.text.content).join(' ');
           console.log(`🔍 GET ARTICULO NOMBRE - Returning text.content: "${resultado}"`);
-          return resultado;
+          return combinarNombreConId(resultado);
         }
         // Si es relación: array de objetos {id: ...}
         if (valor[0] && typeof valor[0] === 'object' && valor[0].id && databaseMeta && databaseMeta.properties && databaseMeta.properties[clave] && databaseMeta.properties[clave].relationOptions) {
@@ -68,7 +106,7 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
           });
           const resultado = nombresRelacionados.join(', ');
           console.log(`🔍 GET ARTICULO NOMBRE - Returning relation names: "${resultado}"`);
-          return resultado;
+          return combinarNombreConId(resultado);
         }
       }
       // Si es objeto tipo Notion (title: [{plain_text: ...}])
@@ -77,15 +115,15 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
         if (Array.isArray(valor.title) && valor.title.length > 0 && valor.title[0].plain_text) {
           const resultado = valor.title.map((v:any) => v.plain_text).join(' ');
           console.log(`🔍 GET ARTICULO NOMBRE - Returning title plain_text: "${resultado}"`);
-          return resultado;
+          return combinarNombreConId(resultado);
         }
         if (valor.plain_text) {
           console.log(`🔍 GET ARTICULO NOMBRE - Returning direct plain_text: "${valor.plain_text}"`);
-          return valor.plain_text;
+          return combinarNombreConId(valor.plain_text);
         }
         if (valor.text && valor.text.content) {
           console.log(`🔍 GET ARTICULO NOMBRE - Returning text.content: "${valor.text.content}"`);
-          return valor.text.content;
+          return combinarNombreConId(valor.text.content);
         }
       }
     }
@@ -94,7 +132,7 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
   console.log(`🔍 GET ARTICULO NOMBRE - Checking for number field...`);
   if ('number' in item && item.number) {
     console.log(`🔍 GET ARTICULO NOMBRE - Found number: ${item.number}`);
-    return String(item.number);
+    return combinarNombreConId(String(item.number));
   }
   
   // Si tiene algún campo string
@@ -107,7 +145,7 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
         continue;
       }
       console.log(`🔍 GET ARTICULO NOMBRE - Found string field "${key}": "${item[key]}"`);
-      return item[key];
+      return combinarNombreConId(item[key]);
     }
     if (Array.isArray(item[key]) && item[key].length > 0 && typeof item[key][0] === 'string') {
       if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(item[key][0])) {
@@ -115,7 +153,7 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
         continue;
       }
       console.log(`🔍 GET ARTICULO NOMBRE - Found string array field "${key}": "${item[key][0]}"`);
-      return item[key][0];
+      return combinarNombreConId(item[key][0]);
     }
     // Si es relación y hay metadata
     if (Array.isArray(item[key]) && item[key].length > 0 && item[key][0] && typeof item[key][0] === 'object' && item[key][0].id && databaseMeta && databaseMeta.properties && databaseMeta.properties[key] && databaseMeta.properties[key].relationOptions) {
@@ -127,7 +165,7 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
       });
       const resultado = nombresRelacionados.join(', ');
       console.log(`🔍 GET ARTICULO NOMBRE - Returning relation result: "${resultado}"`);
-      return resultado;
+      return combinarNombreConId(resultado);
     }
   }
   console.log(`🔍 GET ARTICULO NOMBRE - No valid name found, returning 'Sin nombre'`);
