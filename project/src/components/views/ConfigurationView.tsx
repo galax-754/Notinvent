@@ -23,29 +23,46 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
 
   // ✅ NUEVO: Función auxiliar para combinar nombre con ID de búsqueda
   const combinarNombreConId = (nombre: string): string => {
-    // Buscar el campo id_busqueda
-    const idBusquedaFields = ['id_busqueda', 'Id_busqueda', 'ID_busqueda', 'id_búsqueda', 'Id_búsqueda', 'ID_búsqueda'];
+    // Buscar el campo id_busqueda - incluyendo "Id Busqueda" con espacio
+    const idBusquedaFields = ['Id Busqueda', 'id_busqueda', 'Id_busqueda', 'ID_busqueda', 'id_búsqueda', 'Id_búsqueda', 'ID_búsqueda', 'ID Busqueda'];
     let idBusqueda = null;
     
     for (const idField of idBusquedaFields) {
+      console.log(`🔍 GET ARTICULO NOMBRE - Checking ID field: "${idField}"`);
       if (item[idField]) {
         const valor = item[idField];
+        console.log(`🔍 GET ARTICULO NOMBRE - Found ID field "${idField}" with value:`, valor, typeof valor);
+        
         if (typeof valor === 'string' || typeof valor === 'number') {
           idBusqueda = valor;
+          console.log(`🔍 GET ARTICULO NOMBRE - Direct value found: "${idBusqueda}"`);
           break;
         }
         if (Array.isArray(valor) && valor.length > 0) {
           if (typeof valor[0] === 'string' || typeof valor[0] === 'number') {
             idBusqueda = valor[0];
+            console.log(`🔍 GET ARTICULO NOMBRE - Array string/number value found: "${idBusqueda}"`);
             break;
           }
           if (valor[0] && typeof valor[0] === 'object' && valor[0].plain_text) {
             idBusqueda = valor[0].plain_text;
+            console.log(`🔍 GET ARTICULO NOMBRE - Array plain_text value found: "${idBusqueda}"`);
+            break;
+          }
+          if (valor[0] && typeof valor[0] === 'object' && valor[0].text && valor[0].text.content) {
+            idBusqueda = valor[0].text.content;
+            console.log(`🔍 GET ARTICULO NOMBRE - Array text.content value found: "${idBusqueda}"`);
             break;
           }
         }
         if (typeof valor === 'object' && valor !== null && valor.plain_text) {
           idBusqueda = valor.plain_text;
+          console.log(`🔍 GET ARTICULO NOMBRE - Object plain_text value found: "${idBusqueda}"`);
+          break;
+        }
+        if (typeof valor === 'object' && valor !== null && valor.text && valor.text.content) {
+          idBusqueda = valor.text.content;
+          console.log(`🔍 GET ARTICULO NOMBRE - Object text.content value found: "${idBusqueda}"`);
           break;
         }
       }
@@ -56,6 +73,7 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
       return `${nombre} (ID: ${idBusqueda})`;
     }
     
+    console.log(`🔍 GET ARTICULO NOMBRE - No ID busqueda found, returning just name: "${nombre}"`);
     return nombre;
   };
   // Busca campos típicos de nombre
