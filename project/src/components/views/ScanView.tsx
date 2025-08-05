@@ -503,38 +503,73 @@ export const ScanView: React.FC = () => {
         return extractName(value);
         
       case 'relation':
+        // DEBUG: Log completo para depurar relaciones
+        console.log('🔍 RELATION DEBUG - FULL CONTEXT:', {
+          fieldName,
+          value,
+          valueType: typeof value,
+          isArray: Array.isArray(value),
+          database: !!database,
+          databaseProperties: database?.properties ? Object.keys(database.properties) : 'none',
+          fieldProperty: (database?.properties && fieldName) ? database.properties[fieldName] : 'not found'
+        });
+
         // Manejo mejorado para relaciones - usar getArticuloNombreYNumero
         if (Array.isArray(value)) {
+          console.log('🔍 RELATION DEBUG - Processing array of relations:', value);
           const relationNames = value.map(rel => {
             if (typeof rel === 'object' && rel !== null && rel.id) {
               // Intentar usar metadata de relaciones si está disponible
               if (database && database.properties && fieldName) {
                 const prop = database.properties[fieldName];
+                console.log('🔍 RELATION DEBUG - Field property:', {
+                  fieldName,
+                  prop,
+                  hasRelationOptions: !!(prop?.relationOptions),
+                  relationOptionsCount: prop?.relationOptions?.length || 0,
+                  relationOptions: prop?.relationOptions || 'none'
+                });
+                
                 if (prop && prop.type === 'relation' && prop.relationOptions) {
                   const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel.id);
+                  console.log('🔍 RELATION DEBUG - Looking for ID:', rel.id, 'Found:', relationOption);
                   if (relationOption && relationOption.name) {
+                    console.log('🔍 RELATION DEBUG - Returning relation name:', relationOption.name);
                     return relationOption.name;
                   }
                 }
               }
               // Fallback a mostrar ID de forma legible
+              console.log('🔍 RELATION DEBUG - Using fallback ID for:', rel.id);
               return `ID: ${rel.id}`;
             }
             return extractName(rel);
           }).filter(name => name !== 'N/A');
+          console.log('🔍 RELATION DEBUG - Final relation names array:', relationNames);
           return relationNames.length > 0 ? relationNames.join(', ') : 'N/A';
         }
         if (typeof value === 'object' && value !== null && value.id) {
+          console.log('🔍 RELATION DEBUG - Processing single relation:', value);
           // Para relaciones individuales
           if (database && database.properties && fieldName) {
             const prop = database.properties[fieldName];
+            console.log('🔍 RELATION DEBUG - Single relation property:', {
+              fieldName,
+              prop,
+              hasRelationOptions: !!(prop?.relationOptions),
+              relationOptionsCount: prop?.relationOptions?.length || 0
+            });
+            
             if (prop && prop.type === 'relation' && prop.relationOptions) {
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
+              console.log('🔍 RELATION DEBUG - Single relation lookup:', value.id, 'Found:', relationOption);
               if (relationOption && relationOption.name) {
+                console.log('🔍 RELATION DEBUG - Returning single relation name:', relationOption.name);
                 return relationOption.name;
               }
             }
           }
+          console.log('🔍 RELATION DEBUG - Using fallback ID for single relation:', value.id);
           return `ID: ${value.id}`;
         }
         return extractName(value);
