@@ -480,6 +480,13 @@ export const ScanView: React.FC = () => {
         // LOG TEMPORAL: Detectar campos específicos en select/status
         if (fieldName === 'Estado' || fieldName === 'Uso') {
           console.log(`🔍 SELECT/STATUS CASE - Campo "${fieldName}":`, value);
+          console.log(`🔍 TYPEOF VALUE CHECK - Campo "${fieldName}":`, {
+            typeofValue: typeof value,
+            isValueObject: typeof value === 'object',
+            isValueNull: value === null,
+            bothConditions: typeof value === 'object' && value !== null,
+            valueConstructor: value?.constructor?.name
+          });
         }
         
         // Manejo mejorado para select/status - extraer nombre legible
