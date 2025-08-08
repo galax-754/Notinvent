@@ -14,14 +14,6 @@ import toast from 'react-hot-toast';
 export const ScanView: React.FC = () => {
   const { searchItem, updateItem, scanConfigurations, activeDisplayConfig, addScanHistory, database } = useNotion();
   
-  // DEBUG: Verificar database al inicio
-  console.log('🔍 SCANVIEW DATABASE CHECK:', {
-    databaseExists: !!database,
-    databaseId: database?.id,
-    hasProperties: !!database?.properties,
-    propertiesCount: database?.properties ? Object.keys(database.properties).length : 0
-  });
-  
   const { t } = useLanguage();
   const [scanMode, setScanMode] = useState<'manual' | 'camera'>('manual');
   const [scannedCode, setScannedCode] = useState('');
@@ -592,15 +584,21 @@ export const ScanView: React.FC = () => {
       case 'relation':
         // DEBUG TEMPORAL: Problema específico con "Relacionada con Inventario general"
         if (fieldName === 'Relacionada con Inventario general') {
-          console.log('🔍 RELACION DEBUG:', {
+          console.log('🔍 RELACION DEBUG DETALLADO:', {
             fieldName,
             originalValue: value,
             valueType: typeof value,
             isArray: Array.isArray(value),
+            arrayLength: Array.isArray(value) ? value.length : 'not array',
             arrayContent: Array.isArray(value) ? value : 'not array',
+            firstElement: Array.isArray(value) && value.length > 0 ? value[0] : 'no first element',
+            firstElementType: Array.isArray(value) && value.length > 0 ? typeof value[0] : 'no first element',
             dbToUseId: dbToUse?.id,
             fieldProperty: dbToUse?.properties?.[fieldName],
-            relationOptions: dbToUse?.properties?.[fieldName]?.relationOptions
+            fieldPropertyType: dbToUse?.properties?.[fieldName]?.type,
+            relationOptions: dbToUse?.properties?.[fieldName]?.relationOptions,
+            relationOptionsLength: dbToUse?.properties?.[fieldName]?.relationOptions?.length || 0,
+            sampleRelationOption: dbToUse?.properties?.[fieldName]?.relationOptions?.[0] || 'no options'
           });
         }
         
