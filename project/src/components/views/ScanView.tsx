@@ -575,13 +575,20 @@ export const ScanView: React.FC = () => {
           if (isUUID && database?.properties && fieldName) {
             const prop = database.properties[fieldName];
             console.log('🔍 RELATION DEBUG - String is UUID, treating as relation:', value);
+            console.log('🔍 RELATION DEBUG - Available IDs in relationOptions:', prop?.relationOptions?.map((opt: any) => opt.id) || 'none');
+            console.log('🔍 RELATION DEBUG - Searching for UUID:', value);
+            console.log('🔍 RELATION DEBUG - UUID starts with:', value.substring(0, 20) + '...');
             if (prop && prop.type === 'relation' && prop.relationOptions) {
+              console.log('🔍 RELATION DEBUG - First 3 available IDs start with:', 
+                prop.relationOptions.slice(0, 3).map((opt: any) => opt.id.substring(0, 20) + '...')
+              );
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
               console.log('🔍 RELATION DEBUG - UUID string lookup:', value, 'Found:', relationOption);
               if (relationOption && relationOption.name) {
                 console.log('🔍 RELATION DEBUG - Returning UUID string relation name:', relationOption.name);
                 return relationOption.name;
               }
+              console.log('🔍 RELATION DEBUG - UUID not found in relationOptions, falling back to UUID display');
             }
           }
         }
@@ -699,18 +706,23 @@ export const ScanView: React.FC = () => {
           if (isUUID && database?.properties && fieldName) {
             const prop = database.properties[fieldName];
             console.log(`🔍 DEFAULT DEBUG - Field "${fieldName}" contains UUID string:`, value);
+            console.log(`🔍 DEFAULT DEBUG - UUID starts with:`, value.substring(0, 20) + '...');
             console.log(`🔍 DEFAULT DEBUG - Property info:`, {
               type: prop?.type,
               hasRelationOptions: !!(prop?.relationOptions),
               relationOptionsCount: prop?.relationOptions?.length || 0
             });
             if (prop && prop.relationOptions) {
+              console.log(`🔍 DEFAULT DEBUG - First 3 available IDs start with:`, 
+                prop.relationOptions.slice(0, 3).map((opt: any) => opt.id.substring(0, 20) + '...')
+              );
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
               console.log(`🔍 DEFAULT DEBUG - UUID lookup result:`, relationOption);
               if (relationOption && relationOption.name) {
                 console.log(`🔍 DEFAULT DEBUG - Returning UUID relation name: "${relationOption.name}"`);
                 return relationOption.name;
               }
+              console.log(`🔍 DEFAULT DEBUG - UUID "${value.substring(0, 20)}..." not found in relationOptions`);
             }
           }
         }

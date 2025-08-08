@@ -91,13 +91,19 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
         if (isUUID && databaseMeta && databaseMeta.properties && databaseMeta.properties[clave] && databaseMeta.properties[clave].relationOptions) {
           console.log(`🔍 GET ARTICULO NOMBRE - String is UUID, treating as relation:`, valor);
+          console.log(`🔍 GET ARTICULO NOMBRE - UUID starts with:`, valor.substring(0, 20) + '...');
           const relationOptions = databaseMeta.properties[clave].relationOptions;
+          console.log(`🔍 GET ARTICULO NOMBRE - Available relationOptions count:`, relationOptions.length);
+          console.log(`🔍 GET ARTICULO NOMBRE - First 3 available IDs start with:`, 
+            relationOptions.slice(0, 3).map((opt: any) => opt.id.substring(0, 20) + '...')
+          );
           const found = relationOptions.find((opt: any) => opt.id === valor);
           console.log(`🔍 GET ARTICULO NOMBRE - UUID relation lookup - ID: ${valor}, Found:`, found);
           if (found && found.name) {
             console.log(`🔍 GET ARTICULO NOMBRE - Returning UUID relation name: "${found.name}"`);
             return combinarNombreConId(found.name);
           }
+          console.log(`🔍 GET ARTICULO NOMBRE - UUID "${valor.substring(0, 20)}..." not found in relationOptions, falling back to string`);
         }
         console.log(`🔍 GET ARTICULO NOMBRE - Returning string value: "${valor}"`);
         return combinarNombreConId(valor);
