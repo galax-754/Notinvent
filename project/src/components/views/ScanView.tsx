@@ -13,6 +13,15 @@ import toast from 'react-hot-toast';
 
 export const ScanView: React.FC = () => {
   const { searchItem, updateItem, scanConfigurations, activeDisplayConfig, addScanHistory, database } = useNotion();
+  
+  // DEBUG: Verificar database al inicio
+  console.log('🔍 SCANVIEW DATABASE CHECK:', {
+    databaseExists: !!database,
+    databaseId: database?.id,
+    hasProperties: !!database?.properties,
+    propertiesCount: database?.properties ? Object.keys(database.properties).length : 0
+  });
+  
   const { t } = useLanguage();
   const [scanMode, setScanMode] = useState<'manual' | 'camera'>('manual');
   const [scannedCode, setScannedCode] = useState('');
@@ -454,8 +463,11 @@ export const ScanView: React.FC = () => {
     return 'N/A';
   };
 
-  const formatFieldValue = (value: any, fieldType: string, fieldName?: string, database?: any) => {
+  const formatFieldValue = (value: any, fieldType: string, fieldName?: string, dbParam?: any) => {
     if (value === null || value === undefined) return 'N/A';
+    
+    // Usar database del contexto directamente en lugar del parámetro
+    const dbToUse = database || dbParam;
     
     // LOG TEMPORAL: Detectar campos específicos problemáticos
     if (fieldName === 'Estado' || fieldName === 'Uso') {
@@ -540,11 +552,11 @@ export const ScanView: React.FC = () => {
           }
           
           // NUEVO: Si es un objeto con ID, buscar el nombre en las opciones reales (como en ConfigurationView)
-          if (parsedValue.id && database?.properties && fieldName) {
-            const property = database.properties[fieldName];
+          if (parsedValue.id && dbToUse?.properties && fieldName) {
+            const property = dbToUse.properties[fieldName];
             if (property && (property.type === 'select' || property.type === 'status')) {
               // Usar la misma lógica que en ConfigurationView
-              const options = property.select?.options || property.status?.options || [];
+              const options = (property as any).select?.options || (property as any).status?.options || [];
               
               // LOG TEMPORAL: Debug opciones
               if (fieldName === 'Estado' || fieldName === 'Uso') {
@@ -568,16 +580,16 @@ export const ScanView: React.FC = () => {
             }
             
             // Fallback anterior si no se encuentra en opciones
-            return getArticuloNombreYNumero(parsedValue, database) !== 'Sin nombre' 
-              ? getArticuloNombreYNumero(parsedValue, database) 
+            return getArticuloNombreYNumero(parsedValue, dbToUse) !== 'Sin nombre' 
+              ? getArticuloNombreYNumero(parsedValue, dbToUse) 
               : `ID: ${parsedValue.id}`;
           }
         }
         // NUEVO: Si el valor es un string UUID, tratarlo como relación/select
         if (typeof value === 'string') {
           const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-          if (isUUID && database?.properties && fieldName) {
-            const prop = database.properties[fieldName];
+          if (isUUID && dbToUse?.properties && fieldName) {
+            const prop = dbToUse.properties[fieldName];
             if (prop && (prop.type === 'select' || prop.type === 'status' || prop.type === 'relation') && prop.relationOptions) {
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
               if (relationOption && relationOption.name) {
@@ -595,16 +607,16 @@ export const ScanView: React.FC = () => {
             if (typeof item === 'object' && item !== null) {
               if (item.name) return item.name;
               if (item.id && !item.name) {
-                return getArticuloNombreYNumero(item, database) !== 'Sin nombre' 
-                  ? getArticuloNombreYNumero(item, database) 
+                return getArticuloNombreYNumero(item, dbToUse) !== 'Sin nombre' 
+                  ? getArticuloNombreYNumero(item, dbToUse) 
                   : `ID: ${item.id}`;
               }
             }
             // NUEVO: Si el item es un string UUID, tratarlo como relación
             if (typeof item === 'string') {
               const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item);
-              if (isUUID && database?.properties && fieldName) {
-                const prop = database.properties[fieldName];
+              if (isUUID && dbToUse?.properties && fieldName) {
+                const prop = dbToUse.properties[fieldName];
                 if (prop && (prop.type === 'multi_select' || prop.type === 'relation') && prop.relationOptions) {
                   const relationOption = prop.relationOptions.find((opt: any) => opt.id === item);
                   if (relationOption && relationOption.name) {
@@ -620,8 +632,8 @@ export const ScanView: React.FC = () => {
         // NUEVO: Si el valor es un string UUID, tratarlo como relación
         if (typeof value === 'string') {
           const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-          if (isUUID && database?.properties && fieldName) {
-            const prop = database.properties[fieldName];
+          if (isUUID && dbToUse?.properties && fieldName) {
+            const prop = dbToUse.properties[fieldName];
             if (prop && (prop.type === 'multi_select' || prop.type === 'relation') && prop.relationOptions) {
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
               if (relationOption && relationOption.name) {
@@ -640,12 +652,14 @@ export const ScanView: React.FC = () => {
             valueType: typeof value,
             isArray: Array.isArray(value),
             stringifiedValue: JSON.stringify(value, null, 2),
-            databaseParam: database?.name,
-            databaseFromContext: database?.name,
-            properties: database?.properties ? Object.keys(database.properties) : 'No properties',
-            specificProperty: database?.properties?.[fieldName],
-            relationOptions: database?.properties?.[fieldName]?.relationOptions ? 
-              database.properties[fieldName].relationOptions.map((opt: any) => ({id: opt.id, name: opt.name})) : 
+            databaseParam: dbToUse?.id || 'undefined',
+            databaseFromContext: database?.id || 'undefined',
+            databaseExists: !!dbToUse,
+            properties: dbToUse?.properties ? Object.keys(dbToUse.properties) : 'No properties',
+            specificProperty: dbToUse?.properties?.[fieldName],
+            fieldNameExists: !!fieldName,
+            relationOptions: dbToUse?.properties?.[fieldName]?.relationOptions ? 
+              dbToUse.properties[fieldName].relationOptions.map((opt: any) => ({id: opt.id, name: opt.name})) : 
               'No relationOptions'
           });
         }
@@ -665,8 +679,8 @@ export const ScanView: React.FC = () => {
         if (Array.isArray(parsedRelationValue)) {
           const relationNames = parsedRelationValue.map(rel => {
             if (typeof rel === 'string') {
-              // El valor ya es un string UUID directo - usar database del contexto directamente
-              const prop = database?.properties?.[fieldName!];
+              // El valor ya es un string UUID directo - usar dbToUse del contexto directamente
+              const prop = dbToUse?.properties?.[fieldName!];
               if (prop && prop.type === 'relation' && prop.relationOptions) {
                 const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel);
                 if (relationOption && relationOption.name) {
@@ -676,8 +690,8 @@ export const ScanView: React.FC = () => {
               return rel; // Devolver el UUID tal como está
             }
             if (typeof rel === 'object' && rel !== null && rel.id) {
-              // Intentar usar metadata de relaciones si está disponible - usar database del contexto
-              const prop = database?.properties?.[fieldName!];
+              // Intentar usar metadata de relaciones si está disponible - usar dbToUse del contexto
+              const prop = dbToUse?.properties?.[fieldName!];
               if (prop && prop.type === 'relation' && prop.relationOptions) {
                 const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel.id);
                 if (relationOption && relationOption.name) {
@@ -694,8 +708,8 @@ export const ScanView: React.FC = () => {
         
         // Si es un objeto individual de relación
         if (typeof parsedRelationValue === 'object' && parsedRelationValue !== null && parsedRelationValue.id) {
-          // Para relaciones individuales - usar database del contexto
-          const prop = database?.properties?.[fieldName!];
+          // Para relaciones individuales - usar dbToUse del contexto
+          const prop = dbToUse?.properties?.[fieldName!];
           if (prop && prop.type === 'relation' && prop.relationOptions) {
             const relationOption = prop.relationOptions.find((opt: any) => opt.id === parsedRelationValue.id);
             if (relationOption && relationOption.name) {
@@ -709,7 +723,7 @@ export const ScanView: React.FC = () => {
         if (typeof parsedRelationValue === 'string') {
           const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parsedRelationValue);
           if (isUUID) {
-            const prop = database?.properties?.[fieldName!];
+            const prop = dbToUse?.properties?.[fieldName!];
             if (prop && prop.type === 'relation' && prop.relationOptions) {
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === parsedRelationValue);
               if (relationOption && relationOption.name) {
@@ -724,7 +738,7 @@ export const ScanView: React.FC = () => {
       case 'title':
       case 'rich_text':
         // Manejo mejorado para texto - usar getArticuloNombreYNumero si es apropiado
-        const textResult = getArticuloNombreYNumero(value, database);
+        const textResult = getArticuloNombreYNumero(value, dbToUse);
         return textResult !== 'Sin nombre' ? textResult : extractName(value);
         
       case 'url':
@@ -783,8 +797,8 @@ export const ScanView: React.FC = () => {
         // NUEVO: Si el valor es un objeto con ID, intentar tratarlo como relación/select
         if (typeof value === 'object' && value !== null && value.id && !value.name) {
           console.log(`🔍 DEFAULT OBJECT DEBUG - Campo "${fieldName}" tiene objeto con ID:`, value.id);
-          if (database?.properties && fieldName) {
-            const prop = database.properties[fieldName];
+          if (dbToUse?.properties && fieldName) {
+            const prop = dbToUse.properties[fieldName];
             console.log(`🔍 DEFAULT OBJECT DEBUG - Tipo de campo "${fieldName}":`, prop?.type);
             if (prop && prop.relationOptions) {
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
@@ -797,7 +811,7 @@ export const ScanView: React.FC = () => {
         }
         
         // Para tipos no especificados, usar getArticuloNombreYNumero si es apropiado
-        const defaultResult = getArticuloNombreYNumero(value, database);
+        const defaultResult = getArticuloNombreYNumero(value, dbToUse);
         return defaultResult !== 'Sin nombre' ? defaultResult : extractName(value);
     }
   };
