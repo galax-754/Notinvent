@@ -582,24 +582,9 @@ export const ScanView: React.FC = () => {
         return extractName(value);
         
       case 'relation':
-        // DEBUG TEMPORAL: Problema específico con "Relacionada con Inventario general"
+        // DEBUG: Problema específico con "Relacionada con Inventario general"
         if (fieldName === 'Relacionada con Inventario general') {
-          console.log('🔍 RELACION DEBUG DETALLADO:', {
-            fieldName,
-            originalValue: value,
-            valueType: typeof value,
-            isArray: Array.isArray(value),
-            arrayLength: Array.isArray(value) ? value.length : 'not array',
-            arrayContent: Array.isArray(value) ? value : 'not array',
-            firstElement: Array.isArray(value) && value.length > 0 ? value[0] : 'no first element',
-            firstElementType: Array.isArray(value) && value.length > 0 ? typeof value[0] : 'no first element',
-            dbToUseId: dbToUse?.id,
-            fieldProperty: dbToUse?.properties?.[fieldName],
-            fieldPropertyType: dbToUse?.properties?.[fieldName]?.type,
-            relationOptions: dbToUse?.properties?.[fieldName]?.relationOptions,
-            relationOptionsLength: dbToUse?.properties?.[fieldName]?.relationOptions?.length || 0,
-            sampleRelationOption: dbToUse?.properties?.[fieldName]?.relationOptions?.[0] || 'no options'
-          });
+          console.log('🔍 RELACION DEBUG:', fieldName, '- Valor:', value, '- Tiene relationOptions:', !!dbToUse?.properties?.[fieldName]?.relationOptions);
         }
         
         // NUEVO: Si el valor es un string JSON serializado, parsearlo primero (igual que en select/status)
