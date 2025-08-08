@@ -301,7 +301,7 @@ export const DashboardView: React.FC = () => {
     return icons[iconName] || Info;
   };
 
-  // ✅ FUNCIÓN ACTUALIZADA: Format field value for display con formato de fecha mejorado y campos select simplificados
+  // ✅ FUNCIÓN ACTUALIZADA: Format field value for display con formato mejorado para relaciones
   const formatFieldValue = (value: any, fieldType: string, fieldName?: string) => {
     if (value === null || value === undefined) return 'N/A';
     
@@ -316,6 +316,7 @@ export const DashboardView: React.FC = () => {
       case 'multi_select':
         return Array.isArray(value) ? value.join(', ') : value;
       case 'select':
+      case 'status':
         // ✅ SOLUCIÓN PRINCIPAL: Para campos select, extraer solo el valor limpio
         const selectValue = extractSelectValue(value);
         
@@ -330,6 +331,102 @@ export const DashboardView: React.FC = () => {
         
         // Para otros campos select, mostrar el valor tal como está
         return selectValue || 'N/A';
+      case 'relation':
+        // ✅ NUEVA LÓGICA: Manejar campos de relación como en ScanView
+        
+        // Si el valor es un string JSON serializado, parsearlo primero
+        let parsedRelationValue = value;
+        if (typeof value === 'string' && (value.startsWith('{"') || value.startsWith('['))) {
+          try {
+            parsedRelationValue = JSON.parse(value);
+          } catch (e) {
+            parsedRelationValue = value;
+          }
+        }
+        
+        // Manejar arrays de relaciones
+        if (Array.isArray(parsedRelationValue)) {
+          const relationNames = parsedRelationValue.map(rel => {
+            if (typeof rel === 'string') {
+              const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rel);
+              if (isUUID && database?.properties && fieldName) {
+                const prop = database.properties[fieldName];
+                if (prop && prop.type === 'relation' && prop.relationOptions) {
+                  const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel);
+                  if (relationOption && relationOption.name) {
+                    return relationOption.name;
+                  }
+                }
+              }
+              // Formato más legible para UUIDs
+              if (isUUID) {
+                const parts = rel.split('-');
+                if (parts.length >= 2) {
+                  return `Item-${parts[0].substring(0, 6)}`;
+                }
+                return `Item-${rel.substring(0, 8)}`;
+              }
+              return rel;
+            }
+            if (typeof rel === 'object' && rel !== null && rel.id) {
+              // Intentar usar metadata de relaciones si está disponible
+              const prop = database?.properties?.[fieldName!];
+              if (prop && prop.type === 'relation' && prop.relationOptions) {
+                const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel.id);
+                if (relationOption && relationOption.name) {
+                  return relationOption.name;
+                }
+              }
+              // Formato más legible para objetos con ID
+              const parts = rel.id.split('-');
+              if (parts.length >= 2) {
+                return `Item-${parts[0].substring(0, 6)}`;
+              }
+              return `Item-${rel.id.substring(0, 8)}`;
+            }
+            return safeStringValue(rel);
+          }).filter(name => name !== 'N/A');
+          return relationNames.length > 0 ? relationNames.join(', ') : 'N/A';
+        }
+        
+        // Si es un objeto individual de relación
+        if (typeof parsedRelationValue === 'object' && parsedRelationValue !== null && parsedRelationValue.id) {
+          const prop = database?.properties?.[fieldName!];
+          if (prop && prop.type === 'relation' && prop.relationOptions) {
+            const relationOption = prop.relationOptions.find((opt: any) => opt.id === parsedRelationValue.id);
+            if (relationOption && relationOption.name) {
+              return relationOption.name;
+            }
+          }
+          // Formato más legible
+          const parts = parsedRelationValue.id.split('-');
+          if (parts.length >= 2) {
+            return `Item-${parts[0].substring(0, 6)}`;
+          }
+          return `Item-${parsedRelationValue.id.substring(0, 8)}`;
+        }
+        
+        // Si es un string UUID directo
+        if (typeof parsedRelationValue === 'string') {
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parsedRelationValue);
+          if (isUUID) {
+            const prop = database?.properties?.[fieldName!];
+            if (prop && prop.type === 'relation' && prop.relationOptions) {
+              const relationOption = prop.relationOptions.find((opt: any) => opt.id === parsedRelationValue);
+              if (relationOption && relationOption.name) {
+                return relationOption.name;
+              }
+            }
+            // Formato más legible
+            const parts = parsedRelationValue.split('-');
+            if (parts.length >= 2) {
+              return `Item-${parts[0].substring(0, 6)}`;
+            }
+            return `Item-${parsedRelationValue.substring(0, 8)}`;
+          }
+        }
+        
+        return safeStringValue(parsedRelationValue);
       case 'url':
         return value ? (
           <a href={value} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate">
@@ -349,6 +446,45 @@ export const DashboardView: React.FC = () => {
           </a>
         ) : 'N/A';
       default:
+        // Para tipos no especificados, intentar detectar si es una relación por el formato
+        if (typeof value === 'string') {
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+          if (isUUID && database?.properties && fieldName) {
+            const prop = database.properties[fieldName];
+            if (prop && prop.relationOptions) {
+              const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
+              if (relationOption && relationOption.name) {
+                return relationOption.name;
+              }
+            }
+            // Formato más legible para UUIDs no identificados
+            const parts = value.split('-');
+            if (parts.length >= 2) {
+              return `Item-${parts[0].substring(0, 6)}`;
+            }
+            return `Item-${value.substring(0, 8)}`;
+          }
+        }
+        
+        // Si es un objeto con ID, intentar tratarlo como relación
+        if (typeof value === 'object' && value !== null && value.id && !value.name) {
+          if (database?.properties && fieldName) {
+            const prop = database.properties[fieldName];
+            if (prop && prop.relationOptions) {
+              const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
+              if (relationOption && relationOption.name) {
+                return relationOption.name;
+              }
+            }
+          }
+          // Formato más legible
+          const parts = value.id.split('-');
+          if (parts.length >= 2) {
+            return `Item-${parts[0].substring(0, 6)}`;
+          }
+          return `Item-${value.id.substring(0, 8)}`;
+        }
+        
         return safeStringValue(value);
     }
   };
