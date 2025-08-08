@@ -109,12 +109,20 @@ export const ScanView: React.FC = () => {
       if (isNaN(date.getTime())) {
         return safeStringValue(dateValue);
       }
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      
+      // Formato más legible: "24 de Julio, 2025 - 18:09"
+      const months = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ];
+      
+      const day = date.getDate();
+      const month = months[date.getMonth()];
       const year = date.getFullYear();
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
-      return `${day}/${month}/${year} - ${hours}:${minutes}`;
+      
+      return `${day} de ${month}, ${year} - ${hours}:${minutes}`;
     } catch (error) {
       console.warn('Error formatting date:', dateValue, error);
       return safeStringValue(dateValue);
@@ -625,9 +633,36 @@ export const ScanView: React.FC = () => {
         return extractName(value);
         
       case 'relation':
+        // DEBUGGING temporal para relaciones
+        if (fieldName === 'Relacionada con Inventario general') {
+          console.log(`🔍 Debugging relación "${fieldName}":`, {
+            originalValue: value,
+            valueType: typeof value,
+            isArray: Array.isArray(value),
+            stringifiedValue: JSON.stringify(value, null, 2),
+            database: database?.name,
+            properties: database?.properties ? Object.keys(database.properties) : 'No properties',
+            specificProperty: database?.properties?.[fieldName],
+            relationOptions: database?.properties?.[fieldName]?.relationOptions ? 
+              database.properties[fieldName].relationOptions.map((opt: any) => ({id: opt.id, name: opt.name})) : 
+              'No relationOptions'
+          });
+        }
+
+        // NUEVO: Si el valor es un string JSON serializado, parsearlo primero (igual que en select/status)
+        let parsedRelationValue = value;
+        if (typeof value === 'string' && (value.startsWith('{"') || value.startsWith('['))) {
+          try {
+            parsedRelationValue = JSON.parse(value);
+          } catch (e) {
+            // Si no se puede parsear, usar el valor original
+            parsedRelationValue = value;
+          }
+        }
+        
         // Manejo mejorado para relaciones - usar getArticuloNombreYNumero
-        if (Array.isArray(value)) {
-          const relationNames = value.map(rel => {
+        if (Array.isArray(parsedRelationValue)) {
+          const relationNames = parsedRelationValue.map(rel => {
             if (typeof rel === 'string') {
               // El valor ya es un string UUID directo
               if (database && database.properties && fieldName) {
@@ -659,20 +694,37 @@ export const ScanView: React.FC = () => {
           }).filter(name => name !== 'N/A');
           return relationNames.length > 0 ? relationNames.join(', ') : 'N/A';
         }
-        if (typeof value === 'object' && value !== null && value.id) {
+        
+        // Si es un objeto individual de relación
+        if (typeof parsedRelationValue === 'object' && parsedRelationValue !== null && parsedRelationValue.id) {
           // Para relaciones individuales
           if (database && database.properties && fieldName) {
             const prop = database.properties[fieldName];
             if (prop && prop.type === 'relation' && prop.relationOptions) {
-              const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
+              const relationOption = prop.relationOptions.find((opt: any) => opt.id === parsedRelationValue.id);
               if (relationOption && relationOption.name) {
                 return relationOption.name;
               }
             }
           }
-          return `ID: ${value.id}`;
+          return `ID: ${parsedRelationValue.id}`;
         }
-        return extractName(value);
+        
+        // Si es un string UUID directo
+        if (typeof parsedRelationValue === 'string') {
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parsedRelationValue);
+          if (isUUID && database?.properties && fieldName) {
+            const prop = database.properties[fieldName];
+            if (prop && prop.type === 'relation' && prop.relationOptions) {
+              const relationOption = prop.relationOptions.find((opt: any) => opt.id === parsedRelationValue);
+              if (relationOption && relationOption.name) {
+                return relationOption.name;
+              }
+            }
+          }
+        }
+        
+        return extractName(parsedRelationValue);
         
       case 'title':
       case 'rich_text':
