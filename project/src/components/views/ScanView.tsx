@@ -482,6 +482,22 @@ export const ScanView: React.FC = () => {
               : `ID: ${value.id}`;
           }
         }
+        // NUEVO: Si el valor es un string UUID, tratarlo como relación/select
+        if (typeof value === 'string') {
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+          if (isUUID && database?.properties && fieldName) {
+            const prop = database.properties[fieldName];
+            console.log('🔍 SELECT DEBUG - String is UUID, treating as relation:', value);
+            if (prop && (prop.type === 'select' || prop.type === 'status' || prop.type === 'relation') && prop.relationOptions) {
+              const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
+              console.log('🔍 SELECT DEBUG - UUID string lookup:', value, 'Found:', relationOption);
+              if (relationOption && relationOption.name) {
+                console.log('🔍 SELECT DEBUG - Returning UUID string relation name:', relationOption.name);
+                return relationOption.name;
+              }
+            }
+          }
+        }
         return extractName(value);
         
       case 'multi_select':
@@ -496,9 +512,35 @@ export const ScanView: React.FC = () => {
                   : `ID: ${item.id}`;
               }
             }
+            // NUEVO: Si el item es un string UUID, tratarlo como relación
+            if (typeof item === 'string') {
+              const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item);
+              if (isUUID && database?.properties && fieldName) {
+                const prop = database.properties[fieldName];
+                if (prop && (prop.type === 'multi_select' || prop.type === 'relation') && prop.relationOptions) {
+                  const relationOption = prop.relationOptions.find((opt: any) => opt.id === item);
+                  if (relationOption && relationOption.name) {
+                    return relationOption.name;
+                  }
+                }
+              }
+            }
             return extractName(item);
           }).filter(name => name !== 'N/A');
           return names.length > 0 ? names.join(', ') : 'N/A';
+        }
+        // NUEVO: Si el valor es un string UUID, tratarlo como relación
+        if (typeof value === 'string') {
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+          if (isUUID && database?.properties && fieldName) {
+            const prop = database.properties[fieldName];
+            if (prop && (prop.type === 'multi_select' || prop.type === 'relation') && prop.relationOptions) {
+              const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
+              if (relationOption && relationOption.name) {
+                return relationOption.name;
+              }
+            }
+          }
         }
         return extractName(value);
         
@@ -525,6 +567,23 @@ export const ScanView: React.FC = () => {
             relationOptionsSample: prop?.relationOptions?.slice(0, 3) || 'none',
             fullProperty: prop
           });
+        }
+
+        // NUEVO: Si el valor es un string UUID, tratarlo como relación
+        if (typeof value === 'string') {
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+          if (isUUID && database?.properties && fieldName) {
+            const prop = database.properties[fieldName];
+            console.log('🔍 RELATION DEBUG - String is UUID, treating as relation:', value);
+            if (prop && prop.type === 'relation' && prop.relationOptions) {
+              const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
+              console.log('🔍 RELATION DEBUG - UUID string lookup:', value, 'Found:', relationOption);
+              if (relationOption && relationOption.name) {
+                console.log('🔍 RELATION DEBUG - Returning UUID string relation name:', relationOption.name);
+                return relationOption.name;
+              }
+            }
+          }
         }
 
         // Manejo mejorado para relaciones - usar getArticuloNombreYNumero
@@ -634,6 +693,28 @@ export const ScanView: React.FC = () => {
         return 'N/A';
         
       default:
+        // NUEVO: Si el valor es un string UUID, intentar tratarlo como relación
+        if (typeof value === 'string') {
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+          if (isUUID && database?.properties && fieldName) {
+            const prop = database.properties[fieldName];
+            console.log(`🔍 DEFAULT DEBUG - Field "${fieldName}" contains UUID string:`, value);
+            console.log(`🔍 DEFAULT DEBUG - Property info:`, {
+              type: prop?.type,
+              hasRelationOptions: !!(prop?.relationOptions),
+              relationOptionsCount: prop?.relationOptions?.length || 0
+            });
+            if (prop && prop.relationOptions) {
+              const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
+              console.log(`🔍 DEFAULT DEBUG - UUID lookup result:`, relationOption);
+              if (relationOption && relationOption.name) {
+                console.log(`🔍 DEFAULT DEBUG - Returning UUID relation name: "${relationOption.name}"`);
+                return relationOption.name;
+              }
+            }
+          }
+        }
+        
         // Para tipos no especificados, usar getArticuloNombreYNumero si es apropiado
         const defaultResult = getArticuloNombreYNumero(value, database);
         return defaultResult !== 'Sin nombre' ? defaultResult : extractName(value);

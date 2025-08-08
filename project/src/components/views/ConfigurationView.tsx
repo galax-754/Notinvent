@@ -87,6 +87,18 @@ export function getArticuloNombreYNumero(item: any, databaseMeta?: any): string 
       
       // Si es string directo
       if (typeof valor === 'string') {
+        // NUEVO: Detectar si el string es un UUID (posible relación)
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
+        if (isUUID && databaseMeta && databaseMeta.properties && databaseMeta.properties[clave] && databaseMeta.properties[clave].relationOptions) {
+          console.log(`🔍 GET ARTICULO NOMBRE - String is UUID, treating as relation:`, valor);
+          const relationOptions = databaseMeta.properties[clave].relationOptions;
+          const found = relationOptions.find((opt: any) => opt.id === valor);
+          console.log(`🔍 GET ARTICULO NOMBRE - UUID relation lookup - ID: ${valor}, Found:`, found);
+          if (found && found.name) {
+            console.log(`🔍 GET ARTICULO NOMBRE - Returning UUID relation name: "${found.name}"`);
+            return combinarNombreConId(found.name);
+          }
+        }
         console.log(`🔍 GET ARTICULO NOMBRE - Returning string value: "${valor}"`);
         return combinarNombreConId(valor);
       }
