@@ -582,19 +582,6 @@ export const ScanView: React.FC = () => {
         return extractName(value);
         
       case 'relation':
-        // DEBUG: Problema específico con "Relacionada con Inventario general"
-        if (fieldName === 'Relacionada con Inventario general') {
-          console.log('🔍 RELACION DEBUG:', fieldName, '- Valor:', value, '- Tiene relationOptions:', !!dbToUse?.properties?.[fieldName]?.relationOptions);
-          if (dbToUse?.properties?.[fieldName]?.relationOptions) {
-            const relationOpts = dbToUse.properties[fieldName].relationOptions;
-            console.log('🔍 RelationOptions sample (primeras 5):', relationOpts.slice(0, 5));
-            console.log('🔍 Buscando UUIDs:', value);
-            value.forEach((uuid: string, idx: number) => {
-              const found = relationOpts.find((opt: any) => opt.id === uuid);
-              console.log(`🔍 UUID[${idx}] ${uuid}: ${found ? `ENCONTRADO → ${found.name}` : 'NO ENCONTRADO'}`);
-            });
-          }
-        }
         
         // NUEVO: Si el valor es un string JSON serializado, parsearlo primero (igual que en select/status)
         let parsedRelationValue = value;
@@ -619,11 +606,16 @@ export const ScanView: React.FC = () => {
                   return relationOption.name;
                 }
               }
-              // Si no hay relationOptions, mostrar ID parcial más legible
+              // MEJORADO: Si no hay relationOptions o no se encuentra, mostrar formato más legible
               if (rel.length > 8) {
-                return `${rel.substring(0, 8)}...`;
+                // Extraer partes significativas del UUID para hacerlo más legible
+                const parts = rel.split('-');
+                if (parts.length >= 2) {
+                  return `Item-${parts[0].substring(0, 6)}`;
+                }
+                return `Item-${rel.substring(0, 8)}`;
               }
-              return rel; // Devolver el UUID tal como está
+              return `Item-${rel}`; // Fallback
             }
             if (typeof rel === 'object' && rel !== null && rel.id) {
               // Intentar usar metadata de relaciones si está disponible - usar dbToUse del contexto
@@ -634,8 +626,12 @@ export const ScanView: React.FC = () => {
                   return relationOption.name;
                 }
               }
-              // Fallback a mostrar ID de forma legible
-              return `ID: ${rel.id.substring(0, 8)}...`;
+              // MEJORADO: Fallback a mostrar formato más legible
+              const parts = rel.id.split('-');
+              if (parts.length >= 2) {
+                return `Item-${parts[0].substring(0, 6)}`;
+              }
+              return `Item-${rel.id.substring(0, 8)}`;
             }
             return extractName(rel);
           }).filter(name => name !== 'N/A');
@@ -652,7 +648,12 @@ export const ScanView: React.FC = () => {
               return relationOption.name;
             }
           }
-          return `ID: ${parsedRelationValue.id.substring(0, 8)}...`;
+          // MEJORADO: Fallback más legible
+          const parts = parsedRelationValue.id.split('-');
+          if (parts.length >= 2) {
+            return `Item-${parts[0].substring(0, 6)}`;
+          }
+          return `Item-${parsedRelationValue.id.substring(0, 8)}`;
         }
         
         // Si es un string UUID directo
@@ -666,8 +667,12 @@ export const ScanView: React.FC = () => {
                 return relationOption.name;
               }
             }
-            // Si no hay relationOptions, mostrar versión corta del UUID
-            return `${parsedRelationValue.substring(0, 8)}...`;
+            // MEJORADO: Si no hay relationOptions, mostrar formato más legible
+            const parts = parsedRelationValue.split('-');
+            if (parts.length >= 2) {
+              return `Item-${parts[0].substring(0, 6)}`;
+            }
+            return `Item-${parsedRelationValue.substring(0, 8)}`;
           }
         }
         

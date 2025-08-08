@@ -53,6 +53,64 @@ class NotionService {
     this.databaseSchema = null;
   }
 
+  // ✅ NUEVA FUNCIÓN: Obtener TODAS las páginas de una base de datos con paginación
+  private async getAllPagesFromDatabase(databaseId: string): Promise<any[]> {
+    const allPages: any[] = [];
+    let cursor: string | undefined = undefined;
+    let hasMore = true;
+    
+    console.log(`📄 PAGINATION START - Loading all pages from database ${databaseId}`);
+    
+    while (hasMore) {
+      try {
+        const requestBody: any = { 
+          page_size: 100  // Máximo permitido por Notion
+        };
+        
+        if (cursor) {
+          requestBody.start_cursor = cursor;
+          console.log(`📄 PAGINATION - Loading next batch with cursor: ${cursor.substring(0, 10)}...`);
+        } else {
+          console.log(`📄 PAGINATION - Loading first batch`);
+        }
+        
+        const response = await fetch(`${this.baseURL}/database?databaseId=${databaseId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+        
+        if (!response.ok) {
+          console.error(`📄 PAGINATION ERROR - HTTP ${response.status} for database ${databaseId}`);
+          break;
+        }
+        
+        const data = await response.json();
+        const results = data.results || data.pages || [];
+        
+        console.log(`📄 PAGINATION BATCH - Loaded ${results.length} pages in this batch`);
+        allPages.push(...results);
+        
+        hasMore = data.has_more || false;
+        cursor = data.next_cursor || undefined;
+        
+        console.log(`📄 PAGINATION STATUS - Total loaded: ${allPages.length}, hasMore: ${hasMore}`);
+        
+        // Rate limiting: pequeña pausa entre requests
+        if (hasMore) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+      } catch (error) {
+        console.error(`📄 PAGINATION ERROR for database ${databaseId}:`, error);
+        break;
+      }
+    }
+    
+    console.log(`📄 PAGINATION COMPLETE - Loaded ${allPages.length} total pages from database ${databaseId}`);
+    return allPages;
+  }
+
   async getDatabaseInfo(databaseId: string): Promise<NotionDatabase | null> {
     if (!this.config) return null;
 
@@ -100,19 +158,16 @@ class NotionService {
           properties[key].relation = {
             database_id: prop.relation.database_id
           };
-          // Obtener páginas relacionadas y exponerlas como relationOptions (solo los primeros 100)
+          // Obtener TODAS las páginas relacionadas usando paginación
           try {
             const relatedDbId = prop.relation.database_id;
             
-            const relatedPagesResp = await fetch(`${this.baseURL}/database?databaseId=${relatedDbId}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ page_size: 100 })
-            });
+            console.log(`🔍 LOADING ALL RELATION OPTIONS - Starting to load all pages from database ${relatedDbId} for field "${key}"`);
+            const allRelatedPages = await this.getAllPagesFromDatabase(relatedDbId);
             
-            if (relatedPagesResp.ok) {
-              const relatedPagesData = await relatedPagesResp.json();
-              const results = relatedPagesData.results || relatedPagesData.pages || [];
+            console.log(`🔍 LOADED ALL PAGES - Got ${allRelatedPages.length} total pages for relation field "${key}"`);
+
+            if (allRelatedPages.length > 0) {
 
               // Función mejorada para extraer título de página
               const getPageTitle = (page: any) => {
@@ -191,7 +246,7 @@ class NotionService {
                 return page.id; // Fallback al ID si no se encuentra nada
               };
 
-              properties[key].relationOptions = results.map((page: any) => {
+              properties[key].relationOptions = allRelatedPages.map((page: any) => {
                 const name = getPageTitle(page);
                 console.log(`🔍 RELATION MAPPING - Page ${page.id} mapped to name: "${name}"`);
                 return {
@@ -204,7 +259,7 @@ class NotionService {
 
 
             } else {
-              console.error(`❌ RELATION OPTIONS - Failed to fetch for "${key}". Status: ${relatedPagesResp.status}`);
+              console.log(`🔍 RELATION OPTIONS - No pages found in database ${relatedDbId} for field "${key}"`);
               properties[key].relationOptions = [];
             }
           } catch (err) {
