@@ -484,25 +484,60 @@ export const ScanView: React.FC = () => {
         
         // Manejo mejorado para select/status - extraer nombre legible
         if (typeof value === 'object' && value !== null) {
+          // LOG TEMPORAL: Verificar la estructura completa del objeto value
+          if (fieldName === 'Estado' || fieldName === 'Uso') {
+            console.log(`🔍 DEBUGGING VALUE STRUCTURE - Campo "${fieldName}":`, {
+              hasName: 'name' in value,
+              nameValue: value.name,
+              nameType: typeof value.name,
+              nameBoolean: !!value.name,
+              keys: Object.keys(value),
+              fullObject: value
+            });
+          }
+          
           if (value.name) {
             // LOG TEMPORAL: Verificar que se está devolviendo el name
             if (fieldName === 'Estado' || fieldName === 'Uso') {
               console.log(`🔍 STATUS NAME FOUND - Campo "${fieldName}" devolviendo name:`, value.name);
             }
             return value.name;
+          } else {
+            // LOG TEMPORAL: Si no hay name, ¿por qué?
+            if (fieldName === 'Estado' || fieldName === 'Uso') {
+              console.log(`🔍 NO NAME PROPERTY - Campo "${fieldName}" - ¿Por qué no tiene name?`, value);
+            }
           }
-          if (value.id && !value.name) {
-            // NUEVO: Si es un objeto con ID, intentar buscar en relationOptions
-            if (database?.properties && fieldName) {
-              const prop = database.properties[fieldName];
-              if (prop && (prop.type === 'select' || prop.type === 'status' || prop.type === 'relation') && prop.relationOptions) {
-                const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
-                if (relationOption && relationOption.name) {
-                  return relationOption.name;
+          
+          // NUEVO: Si es un objeto con ID, buscar el nombre en las opciones reales (como en ConfigurationView)
+          if (value.id && database?.properties && fieldName) {
+            const property = database.properties[fieldName];
+            if (property && (property.type === 'select' || property.type === 'status')) {
+              // Usar la misma lógica que en ConfigurationView
+              const options = property.select?.options || property.status?.options || [];
+              
+              // LOG TEMPORAL: Debug opciones
+              if (fieldName === 'Estado' || fieldName === 'Uso') {
+                console.log(`🔍 OPCIONES ENCONTRADAS - Campo "${fieldName}":`, options);
+                console.log(`🔍 BUSCANDO ID "${value.id}" en opciones...`);
+              }
+              
+              const matchingOption = options.find((opt: any) => opt.id === value.id);
+              if (matchingOption && matchingOption.name) {
+                // LOG TEMPORAL: Opción encontrada
+                if (fieldName === 'Estado' || fieldName === 'Uso') {
+                  console.log(`🔍 ✅ OPCIÓN ENCONTRADA - Campo "${fieldName}":`, matchingOption.name);
+                }
+                return matchingOption.name;
+              } else {
+                // LOG TEMPORAL: Opción no encontrada
+                if (fieldName === 'Estado' || fieldName === 'Uso') {
+                  console.log(`🔍 ❌ OPCIÓN NO ENCONTRADA - Campo "${fieldName}" para ID:`, value.id);
                 }
               }
             }
-            // Fallback anterior
+            
+            // Fallback anterior si no se encuentra en opciones
             return getArticuloNombreYNumero(value, database) !== 'Sin nombre' 
               ? getArticuloNombreYNumero(value, database) 
               : `ID: ${value.id}`;
