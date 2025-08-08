@@ -479,19 +479,11 @@ export const ScanView: React.FC = () => {
             // NUEVO: Si es un objeto con ID, intentar buscar en relationOptions
             if (database?.properties && fieldName) {
               const prop = database.properties[fieldName];
-              console.log('🔍 SELECT OBJECT DEBUG - Field has object with ID:', value.id);
-              console.log('🔍 SELECT OBJECT DEBUG - Field type:', prop?.type);
               if (prop && (prop.type === 'select' || prop.type === 'status' || prop.type === 'relation') && prop.relationOptions) {
-                console.log('🔍 SELECT OBJECT DEBUG - Available options:', 
-                  prop.relationOptions.slice(0, 3).map((opt: any) => `${opt.id.substring(0, 8)}... (${opt.name})`)
-                );
                 const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
-                console.log('🔍 SELECT OBJECT DEBUG - Object ID lookup:', value.id, 'Found:', relationOption);
                 if (relationOption && relationOption.name) {
-                  console.log('🔍 SELECT OBJECT DEBUG - ✅ Found name:', relationOption.name);
                   return relationOption.name;
                 }
-                console.log('🔍 SELECT OBJECT DEBUG - ❌ Object ID not found in relationOptions');
               }
             }
             // Fallback anterior
@@ -505,12 +497,9 @@ export const ScanView: React.FC = () => {
           const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
           if (isUUID && database?.properties && fieldName) {
             const prop = database.properties[fieldName];
-            console.log('🔍 SELECT DEBUG - String is UUID, treating as relation:', value);
             if (prop && (prop.type === 'select' || prop.type === 'status' || prop.type === 'relation') && prop.relationOptions) {
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
-              console.log('🔍 SELECT DEBUG - UUID string lookup:', value, 'Found:', relationOption);
               if (relationOption && relationOption.name) {
-                console.log('🔍 SELECT DEBUG - Returning UUID string relation name:', relationOption.name);
                 return relationOption.name;
               }
             }
@@ -563,74 +552,18 @@ export const ScanView: React.FC = () => {
         return extractName(value);
         
       case 'relation':
-        // DEBUG: Log completo para depurar relaciones
-        console.log('🔍 RELATION DEBUG - FULL CONTEXT:', {
-          fieldName,
-          value,
-          valueType: typeof value,
-          isArray: Array.isArray(value),
-          database: !!database,
-          databaseProperties: database?.properties ? Object.keys(database.properties) : 'none',
-          fieldProperty: (database?.properties && fieldName) ? database.properties[fieldName] : 'not found'
-        });
-
-        if (database?.properties && fieldName) {
-          const prop = database.properties[fieldName];
-          console.log('🔍 RELATION DEBUG - DETAILED PROPERTY INFO:', {
-            fieldName,
-            propExists: !!prop,
-            propType: prop?.type,
-            hasRelationOptions: !!(prop?.relationOptions),
-            relationOptionsCount: prop?.relationOptions?.length || 0,
-            relationOptionsSample: prop?.relationOptions?.slice(0, 3) || 'none',
-            fullProperty: prop
-          });
-        }
-
-        // NUEVO: Si el valor es un string UUID, tratarlo como relación
-        if (typeof value === 'string') {
-          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-          if (isUUID && database?.properties && fieldName) {
-            const prop = database.properties[fieldName];
-            console.log('🔍 RELATION DEBUG - String is UUID, treating as relation:', value);
-            console.log('🔍 RELATION DEBUG - Available IDs in relationOptions:', prop?.relationOptions?.map((opt: any) => opt.id) || 'none');
-            console.log('🔍 RELATION DEBUG - Searching for UUID:', value);
-            console.log('🔍 RELATION DEBUG - UUID starts with:', value.substring(0, 20) + '...');
-            if (prop && prop.type === 'relation' && prop.relationOptions) {
-              console.log('🔍 RELATION DEBUG - First 3 available IDs start with:', 
-                prop.relationOptions.slice(0, 3).map((opt: any) => opt.id.substring(0, 20) + '...')
-              );
-              const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
-              console.log('🔍 RELATION DEBUG - UUID string lookup:', value, 'Found:', relationOption);
-              if (relationOption && relationOption.name) {
-                console.log('🔍 RELATION DEBUG - Returning UUID string relation name:', relationOption.name);
-                return relationOption.name;
-              }
-              console.log('🔍 RELATION DEBUG - UUID not found in relationOptions, falling back to UUID display');
-            }
-          }
-        }
-
         // Manejo mejorado para relaciones - usar getArticuloNombreYNumero
         if (Array.isArray(value)) {
-          console.log('🔍 RELATION DEBUG - Processing array of relations:', value);
           const relationNames = value.map(rel => {
             if (typeof rel === 'string') {
               // El valor ya es un string UUID directo
               if (database && database.properties && fieldName) {
                 const prop = database.properties[fieldName];
                 if (prop && prop.type === 'relation' && prop.relationOptions) {
-                  console.log('🔍 RELATION ARRAY STRING - Searching for UUID:', rel);
-                  console.log('🔍 RELATION ARRAY STRING - UUID prefix:', rel.substring(0, 8));
-                  console.log('🔍 RELATION ARRAY STRING - Available UUID prefixes:', 
-                    prop.relationOptions.slice(0, 5).map((opt: any) => `${opt.id.substring(0, 8)}... (${opt.name})`)
-                  );
                   const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel);
                   if (relationOption && relationOption.name) {
-                    console.log('🔍 RELATION ARRAY STRING - ✅ Found name:', relationOption.name);
                     return relationOption.name;
                   }
-                  console.log('🔍 RELATION ARRAY STRING - ❌ UUID not found, showing raw UUID');
                 }
               }
               return rel; // Devolver el UUID tal como está
@@ -639,56 +572,31 @@ export const ScanView: React.FC = () => {
               // Intentar usar metadata de relaciones si está disponible
               if (database && database.properties && fieldName) {
                 const prop = database.properties[fieldName];
-                console.log('🔍 RELATION DEBUG - Field property:', {
-                  fieldName,
-                  prop,
-                  hasRelationOptions: !!(prop?.relationOptions),
-                  relationOptionsCount: prop?.relationOptions?.length || 0,
-                  relationOptions: prop?.relationOptions || 'none'
-                });
-                
                 if (prop && prop.type === 'relation' && prop.relationOptions) {
                   const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel.id);
-                  console.log('🔍 RELATION DEBUG - Looking for ID:', rel.id, 'Found:', relationOption);
-                  console.log('🔍 RELATION DEBUG - Available IDs in array relationOptions:', prop.relationOptions.map((opt: any) => opt.id).slice(0, 10));
                   if (relationOption && relationOption.name) {
-                    console.log('🔍 RELATION DEBUG - Returning relation name:', relationOption.name);
                     return relationOption.name;
                   }
                 }
               }
               // Fallback a mostrar ID de forma legible
-              console.log('🔍 RELATION DEBUG - Using fallback ID for:', rel.id);
               return `ID: ${rel.id}`;
             }
             return extractName(rel);
           }).filter(name => name !== 'N/A');
-          console.log('🔍 RELATION DEBUG - Final relation names array:', relationNames);
           return relationNames.length > 0 ? relationNames.join(', ') : 'N/A';
         }
         if (typeof value === 'object' && value !== null && value.id) {
-          console.log('🔍 RELATION DEBUG - Processing single relation:', value);
           // Para relaciones individuales
           if (database && database.properties && fieldName) {
             const prop = database.properties[fieldName];
-            console.log('🔍 RELATION DEBUG - Single relation property:', {
-              fieldName,
-              prop,
-              hasRelationOptions: !!(prop?.relationOptions),
-              relationOptionsCount: prop?.relationOptions?.length || 0
-            });
-            
             if (prop && prop.type === 'relation' && prop.relationOptions) {
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
-              console.log('🔍 RELATION DEBUG - Single relation lookup:', value.id, 'Found:', relationOption);
-              console.log('🔍 RELATION DEBUG - Available IDs in single relationOptions:', prop.relationOptions.map((opt: any) => opt.id).slice(0, 10));
               if (relationOption && relationOption.name) {
-                console.log('🔍 RELATION DEBUG - Returning single relation name:', relationOption.name);
                 return relationOption.name;
               }
             }
           }
-          console.log('🔍 RELATION DEBUG - Using fallback ID for single relation:', value.id);
           return `ID: ${value.id}`;
         }
         return extractName(value);
@@ -743,50 +651,27 @@ export const ScanView: React.FC = () => {
           const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
           if (isUUID && database?.properties && fieldName) {
             const prop = database.properties[fieldName];
-            console.log(`🔍 DEFAULT DEBUG - Field "${fieldName}" contains UUID string:`, value);
-            console.log(`🔍 DEFAULT DEBUG - UUID starts with:`, value.substring(0, 20) + '...');
-            console.log(`🔍 DEFAULT DEBUG - Property info:`, {
-              type: prop?.type,
-              hasRelationOptions: !!(prop?.relationOptions),
-              relationOptionsCount: prop?.relationOptions?.length || 0
-            });
             if (prop && prop.relationOptions) {
-              console.log(`🔍 DEFAULT DEBUG - First 3 available IDs start with:`, 
-                prop.relationOptions.slice(0, 3).map((opt: any) => opt.id.substring(0, 20) + '...')
-              );
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value);
-              console.log(`🔍 DEFAULT DEBUG - UUID lookup result:`, relationOption);
               if (relationOption && relationOption.name) {
-                console.log(`🔍 DEFAULT DEBUG - Returning UUID relation name: "${relationOption.name}"`);
                 return relationOption.name;
               }
-              console.log(`🔍 DEFAULT DEBUG - UUID "${value.substring(0, 20)}..." not found in relationOptions`);
             }
           }
         }
         
         // NUEVO: Si el valor es un objeto con ID, intentar tratarlo como relación/select
         if (typeof value === 'object' && value !== null && value.id && !value.name) {
-          console.log(`🔍 DEFAULT OBJECT DEBUG - Field "${fieldName}" has object with ID:`, value.id);
+          console.log(`🔍 DEFAULT OBJECT DEBUG - Campo "${fieldName}" tiene objeto con ID:`, value.id);
           if (database?.properties && fieldName) {
             const prop = database.properties[fieldName];
-            console.log(`🔍 DEFAULT OBJECT DEBUG - Field type:`, prop?.type);
-            console.log(`🔍 DEFAULT OBJECT DEBUG - Property info:`, {
-              type: prop?.type,
-              hasRelationOptions: !!(prop?.relationOptions),
-              relationOptionsCount: prop?.relationOptions?.length || 0
-            });
+            console.log(`🔍 DEFAULT OBJECT DEBUG - Tipo de campo "${fieldName}":`, prop?.type);
             if (prop && prop.relationOptions) {
-              console.log(`🔍 DEFAULT OBJECT DEBUG - Available options:`, 
-                prop.relationOptions.slice(0, 3).map((opt: any) => `${opt.id.substring(0, 8)}... (${opt.name})`)
-              );
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
-              console.log(`🔍 DEFAULT OBJECT DEBUG - Object ID lookup:`, value.id, 'Found:', relationOption);
+              console.log(`🔍 DEFAULT OBJECT DEBUG - Búsqueda de ID en "${fieldName}":`, relationOption ? `✅ ${relationOption.name}` : '❌ No encontrado');
               if (relationOption && relationOption.name) {
-                console.log(`🔍 DEFAULT OBJECT DEBUG - ✅ Found name:`, relationOption.name);
                 return relationOption.name;
               }
-              console.log(`🔍 DEFAULT OBJECT DEBUG - ❌ Object ID not found in relationOptions`);
             }
           }
         }
