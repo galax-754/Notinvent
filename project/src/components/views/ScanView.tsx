@@ -489,35 +489,50 @@ export const ScanView: React.FC = () => {
           });
         }
         
+        // NUEVO: Si el valor es un string JSON serializado, parsearlo primero
+        let parsedValue = value;
+        if (typeof value === 'string' && (value.startsWith('{"') || value.startsWith('{'))) {
+          try {
+            parsedValue = JSON.parse(value);
+            // LOG TEMPORAL: Verificar parsing
+            if (fieldName === 'Estado' || fieldName === 'Uso') {
+              console.log(`🔍 JSON PARSED - Campo "${fieldName}":`, parsedValue);
+            }
+          } catch (e) {
+            // Si no se puede parsear, usar el valor original
+            parsedValue = value;
+          }
+        }
+        
         // Manejo mejorado para select/status - extraer nombre legible
-        if (typeof value === 'object' && value !== null) {
-          // LOG TEMPORAL: Verificar la estructura completa del objeto value
+        if (typeof parsedValue === 'object' && parsedValue !== null) {
+          // LOG TEMPORAL: Verificar la estructura completa del objeto parseado
           if (fieldName === 'Estado' || fieldName === 'Uso') {
-            console.log(`🔍 DEBUGGING VALUE STRUCTURE - Campo "${fieldName}":`, {
-              hasName: 'name' in value,
-              nameValue: value.name,
-              nameType: typeof value.name,
-              nameBoolean: !!value.name,
-              keys: Object.keys(value),
-              fullObject: value
+            console.log(`🔍 DEBUGGING PARSED VALUE STRUCTURE - Campo "${fieldName}":`, {
+              hasName: 'name' in parsedValue,
+              nameValue: parsedValue.name,
+              nameType: typeof parsedValue.name,
+              nameBoolean: !!parsedValue.name,
+              keys: Object.keys(parsedValue),
+              fullObject: parsedValue
             });
           }
           
-          if (value.name) {
+          if (parsedValue.name) {
             // LOG TEMPORAL: Verificar que se está devolviendo el name
             if (fieldName === 'Estado' || fieldName === 'Uso') {
-              console.log(`🔍 STATUS NAME FOUND - Campo "${fieldName}" devolviendo name:`, value.name);
+              console.log(`🔍 STATUS NAME FOUND - Campo "${fieldName}" devolviendo name:`, parsedValue.name);
             }
-            return value.name;
+            return parsedValue.name;
           } else {
             // LOG TEMPORAL: Si no hay name, ¿por qué?
             if (fieldName === 'Estado' || fieldName === 'Uso') {
-              console.log(`🔍 NO NAME PROPERTY - Campo "${fieldName}" - ¿Por qué no tiene name?`, value);
+              console.log(`🔍 NO NAME PROPERTY - Campo "${fieldName}" - ¿Por qué no tiene name?`, parsedValue);
             }
           }
           
           // NUEVO: Si es un objeto con ID, buscar el nombre en las opciones reales (como en ConfigurationView)
-          if (value.id && database?.properties && fieldName) {
+          if (parsedValue.id && database?.properties && fieldName) {
             const property = database.properties[fieldName];
             if (property && (property.type === 'select' || property.type === 'status')) {
               // Usar la misma lógica que en ConfigurationView
@@ -526,10 +541,10 @@ export const ScanView: React.FC = () => {
               // LOG TEMPORAL: Debug opciones
               if (fieldName === 'Estado' || fieldName === 'Uso') {
                 console.log(`🔍 OPCIONES ENCONTRADAS - Campo "${fieldName}":`, options);
-                console.log(`🔍 BUSCANDO ID "${value.id}" en opciones...`);
+                console.log(`🔍 BUSCANDO ID "${parsedValue.id}" en opciones...`);
               }
               
-              const matchingOption = options.find((opt: any) => opt.id === value.id);
+              const matchingOption = options.find((opt: any) => opt.id === parsedValue.id);
               if (matchingOption && matchingOption.name) {
                 // LOG TEMPORAL: Opción encontrada
                 if (fieldName === 'Estado' || fieldName === 'Uso') {
@@ -539,15 +554,15 @@ export const ScanView: React.FC = () => {
               } else {
                 // LOG TEMPORAL: Opción no encontrada
                 if (fieldName === 'Estado' || fieldName === 'Uso') {
-                  console.log(`🔍 ❌ OPCIÓN NO ENCONTRADA - Campo "${fieldName}" para ID:`, value.id);
+                  console.log(`🔍 ❌ OPCIÓN NO ENCONTRADA - Campo "${fieldName}" para ID:`, parsedValue.id);
                 }
               }
             }
             
             // Fallback anterior si no se encuentra en opciones
-            return getArticuloNombreYNumero(value, database) !== 'Sin nombre' 
-              ? getArticuloNombreYNumero(value, database) 
-              : `ID: ${value.id}`;
+            return getArticuloNombreYNumero(parsedValue, database) !== 'Sin nombre' 
+              ? getArticuloNombreYNumero(parsedValue, database) 
+              : `ID: ${parsedValue.id}`;
           }
         }
         // NUEVO: Si el valor es un string UUID, tratarlo como relación/select
