@@ -546,6 +546,7 @@ export const ScanView: React.FC = () => {
                 if (prop && prop.type === 'relation' && prop.relationOptions) {
                   const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel.id);
                   console.log('🔍 RELATION DEBUG - Looking for ID:', rel.id, 'Found:', relationOption);
+                  console.log('🔍 RELATION DEBUG - Available IDs in array relationOptions:', prop.relationOptions.map((opt: any) => opt.id).slice(0, 10));
                   if (relationOption && relationOption.name) {
                     console.log('🔍 RELATION DEBUG - Returning relation name:', relationOption.name);
                     return relationOption.name;
@@ -576,6 +577,7 @@ export const ScanView: React.FC = () => {
             if (prop && prop.type === 'relation' && prop.relationOptions) {
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
               console.log('🔍 RELATION DEBUG - Single relation lookup:', value.id, 'Found:', relationOption);
+              console.log('🔍 RELATION DEBUG - Available IDs in single relationOptions:', prop.relationOptions.map((opt: any) => opt.id).slice(0, 10));
               if (relationOption && relationOption.name) {
                 console.log('🔍 RELATION DEBUG - Returning single relation name:', relationOption.name);
                 return relationOption.name;
