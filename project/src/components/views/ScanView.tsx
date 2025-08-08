@@ -476,7 +476,25 @@ export const ScanView: React.FC = () => {
         if (typeof value === 'object' && value !== null) {
           if (value.name) return value.name;
           if (value.id && !value.name) {
-            // Si solo tenemos ID, intentar usar getArticuloNombreYNumero para buscar nombre
+            // NUEVO: Si es un objeto con ID, intentar buscar en relationOptions
+            if (database?.properties && fieldName) {
+              const prop = database.properties[fieldName];
+              console.log('🔍 SELECT OBJECT DEBUG - Field has object with ID:', value.id);
+              console.log('🔍 SELECT OBJECT DEBUG - Field type:', prop?.type);
+              if (prop && (prop.type === 'select' || prop.type === 'status' || prop.type === 'relation') && prop.relationOptions) {
+                console.log('🔍 SELECT OBJECT DEBUG - Available options:', 
+                  prop.relationOptions.slice(0, 3).map((opt: any) => `${opt.id.substring(0, 8)}... (${opt.name})`)
+                );
+                const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
+                console.log('🔍 SELECT OBJECT DEBUG - Object ID lookup:', value.id, 'Found:', relationOption);
+                if (relationOption && relationOption.name) {
+                  console.log('🔍 SELECT OBJECT DEBUG - ✅ Found name:', relationOption.name);
+                  return relationOption.name;
+                }
+                console.log('🔍 SELECT OBJECT DEBUG - ❌ Object ID not found in relationOptions');
+              }
+            }
+            // Fallback anterior
             return getArticuloNombreYNumero(value, database) !== 'Sin nombre' 
               ? getArticuloNombreYNumero(value, database) 
               : `ID: ${value.id}`;
