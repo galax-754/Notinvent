@@ -469,11 +469,6 @@ export const ScanView: React.FC = () => {
     // Usar database del contexto directamente en lugar del parámetro
     const dbToUse = database || dbParam;
     
-    // LOG TEMPORAL: Detectar campos específicos problemáticos
-    if (fieldName === 'Estado' || fieldName === 'Uso') {
-      console.log(`🔍 CAMPO PROBLEMÁTICO "${fieldName}" - Tipo: ${fieldType}, Valor:`, value);
-    }
-    
     switch (fieldType) {
       case 'checkbox':
         // Manejo mejorado para checkboxes de Notion
@@ -485,6 +480,8 @@ export const ScanView: React.FC = () => {
         return value ? '✓ Sí' : '✗ No';
         
       case 'date':
+      case 'created_time':
+      case 'last_edited_time':
         return formatDateForDisplay(value);
         
       case 'number':
@@ -497,27 +494,11 @@ export const ScanView: React.FC = () => {
         
       case 'select':
       case 'status':
-        // LOG TEMPORAL: Detectar campos específicos en select/status
-        if (fieldName === 'Estado' || fieldName === 'Uso') {
-          console.log(`🔍 SELECT/STATUS CASE - Campo "${fieldName}":`, value);
-          console.log(`🔍 TYPEOF VALUE CHECK - Campo "${fieldName}":`, {
-            typeofValue: typeof value,
-            isValueObject: typeof value === 'object',
-            isValueNull: value === null,
-            bothConditions: typeof value === 'object' && value !== null,
-            valueConstructor: value?.constructor?.name
-          });
-        }
-        
         // NUEVO: Si el valor es un string JSON serializado, parsearlo primero
         let parsedValue = value;
         if (typeof value === 'string' && (value.startsWith('{"') || value.startsWith('{'))) {
           try {
             parsedValue = JSON.parse(value);
-            // LOG TEMPORAL: Verificar parsing
-            if (fieldName === 'Estado' || fieldName === 'Uso') {
-              console.log(`🔍 JSON PARSED - Campo "${fieldName}":`, parsedValue);
-            }
           } catch (e) {
             // Si no se puede parsear, usar el valor original
             parsedValue = value;
@@ -526,29 +507,8 @@ export const ScanView: React.FC = () => {
         
         // Manejo mejorado para select/status - extraer nombre legible
         if (typeof parsedValue === 'object' && parsedValue !== null) {
-          // LOG TEMPORAL: Verificar la estructura completa del objeto parseado
-          if (fieldName === 'Estado' || fieldName === 'Uso') {
-            console.log(`🔍 DEBUGGING PARSED VALUE STRUCTURE - Campo "${fieldName}":`, {
-              hasName: 'name' in parsedValue,
-              nameValue: parsedValue.name,
-              nameType: typeof parsedValue.name,
-              nameBoolean: !!parsedValue.name,
-              keys: Object.keys(parsedValue),
-              fullObject: parsedValue
-            });
-          }
-          
           if (parsedValue.name) {
-            // LOG TEMPORAL: Verificar que se está devolviendo el name
-            if (fieldName === 'Estado' || fieldName === 'Uso') {
-              console.log(`🔍 STATUS NAME FOUND - Campo "${fieldName}" devolviendo name:`, parsedValue.name);
-            }
             return parsedValue.name;
-          } else {
-            // LOG TEMPORAL: Si no hay name, ¿por qué?
-            if (fieldName === 'Estado' || fieldName === 'Uso') {
-              console.log(`🔍 NO NAME PROPERTY - Campo "${fieldName}" - ¿Por qué no tiene name?`, parsedValue);
-            }
           }
           
           // NUEVO: Si es un objeto con ID, buscar el nombre en las opciones reales (como en ConfigurationView)
@@ -558,24 +518,9 @@ export const ScanView: React.FC = () => {
               // Usar la misma lógica que en ConfigurationView
               const options = (property as any).select?.options || (property as any).status?.options || [];
               
-              // LOG TEMPORAL: Debug opciones
-              if (fieldName === 'Estado' || fieldName === 'Uso') {
-                console.log(`🔍 OPCIONES ENCONTRADAS - Campo "${fieldName}":`, options);
-                console.log(`🔍 BUSCANDO ID "${parsedValue.id}" en opciones...`);
-              }
-              
               const matchingOption = options.find((opt: any) => opt.id === parsedValue.id);
               if (matchingOption && matchingOption.name) {
-                // LOG TEMPORAL: Opción encontrada
-                if (fieldName === 'Estado' || fieldName === 'Uso') {
-                  console.log(`🔍 ✅ OPCIÓN ENCONTRADA - Campo "${fieldName}":`, matchingOption.name);
-                }
                 return matchingOption.name;
-              } else {
-                // LOG TEMPORAL: Opción no encontrada
-                if (fieldName === 'Estado' || fieldName === 'Uso') {
-                  console.log(`🔍 ❌ OPCIÓN NO ENCONTRADA - Campo "${fieldName}" para ID:`, parsedValue.id);
-                }
               }
             }
             
@@ -645,25 +590,20 @@ export const ScanView: React.FC = () => {
         return extractName(value);
         
       case 'relation':
-        // DEBUGGING temporal para relaciones
+        // DEBUG TEMPORAL: Problema específico con "Relacionada con Inventario general"
         if (fieldName === 'Relacionada con Inventario general') {
-          console.log(`🔍 Debugging relación "${fieldName}":`, {
+          console.log('🔍 RELACION DEBUG:', {
+            fieldName,
             originalValue: value,
             valueType: typeof value,
             isArray: Array.isArray(value),
-            stringifiedValue: JSON.stringify(value, null, 2),
-            databaseParam: dbToUse?.id || 'undefined',
-            databaseFromContext: database?.id || 'undefined',
-            databaseExists: !!dbToUse,
-            properties: dbToUse?.properties ? Object.keys(dbToUse.properties) : 'No properties',
-            specificProperty: dbToUse?.properties?.[fieldName],
-            fieldNameExists: !!fieldName,
-            relationOptions: dbToUse?.properties?.[fieldName]?.relationOptions ? 
-              dbToUse.properties[fieldName].relationOptions.map((opt: any) => ({id: opt.id, name: opt.name})) : 
-              'No relationOptions'
+            arrayContent: Array.isArray(value) ? value : 'not array',
+            dbToUseId: dbToUse?.id,
+            fieldProperty: dbToUse?.properties?.[fieldName],
+            relationOptions: dbToUse?.properties?.[fieldName]?.relationOptions
           });
         }
-
+        
         // NUEVO: Si el valor es un string JSON serializado, parsearlo primero (igual que en select/status)
         let parsedRelationValue = value;
         if (typeof value === 'string' && (value.startsWith('{"') || value.startsWith('['))) {
@@ -687,6 +627,10 @@ export const ScanView: React.FC = () => {
                   return relationOption.name;
                 }
               }
+              // Si no hay relationOptions, mostrar ID parcial más legible
+              if (rel.length > 8) {
+                return `${rel.substring(0, 8)}...`;
+              }
               return rel; // Devolver el UUID tal como está
             }
             if (typeof rel === 'object' && rel !== null && rel.id) {
@@ -699,7 +643,7 @@ export const ScanView: React.FC = () => {
                 }
               }
               // Fallback a mostrar ID de forma legible
-              return `ID: ${rel.id}`;
+              return `ID: ${rel.id.substring(0, 8)}...`;
             }
             return extractName(rel);
           }).filter(name => name !== 'N/A');
@@ -716,7 +660,7 @@ export const ScanView: React.FC = () => {
               return relationOption.name;
             }
           }
-          return `ID: ${parsedRelationValue.id}`;
+          return `ID: ${parsedRelationValue.id.substring(0, 8)}...`;
         }
         
         // Si es un string UUID directo
@@ -730,6 +674,8 @@ export const ScanView: React.FC = () => {
                 return relationOption.name;
               }
             }
+            // Si no hay relationOptions, mostrar versión corta del UUID
+            return `${parsedRelationValue.substring(0, 8)}...`;
           }
         }
         
@@ -796,13 +742,10 @@ export const ScanView: React.FC = () => {
         
         // NUEVO: Si el valor es un objeto con ID, intentar tratarlo como relación/select
         if (typeof value === 'object' && value !== null && value.id && !value.name) {
-          console.log(`🔍 DEFAULT OBJECT DEBUG - Campo "${fieldName}" tiene objeto con ID:`, value.id);
           if (dbToUse?.properties && fieldName) {
             const prop = dbToUse.properties[fieldName];
-            console.log(`🔍 DEFAULT OBJECT DEBUG - Tipo de campo "${fieldName}":`, prop?.type);
             if (prop && prop.relationOptions) {
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
-              console.log(`🔍 DEFAULT OBJECT DEBUG - Búsqueda de ID en "${fieldName}":`, relationOption ? `✅ ${relationOption.name}` : '❌ No encontrado');
               if (relationOption && relationOption.name) {
                 return relationOption.name;
               }
