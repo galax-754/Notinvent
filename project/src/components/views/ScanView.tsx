@@ -484,7 +484,13 @@ export const ScanView: React.FC = () => {
         
         // Manejo mejorado para select/status - extraer nombre legible
         if (typeof value === 'object' && value !== null) {
-          if (value.name) return value.name;
+          if (value.name) {
+            // LOG TEMPORAL: Verificar que se está devolviendo el name
+            if (fieldName === 'Estado' || fieldName === 'Uso') {
+              console.log(`🔍 STATUS NAME FOUND - Campo "${fieldName}" devolviendo name:`, value.name);
+            }
+            return value.name;
+          }
           if (value.id && !value.name) {
             // NUEVO: Si es un objeto con ID, intentar buscar en relationOptions
             if (database?.properties && fieldName) {
