@@ -449,6 +449,11 @@ export const ScanView: React.FC = () => {
   const formatFieldValue = (value: any, fieldType: string, fieldName?: string, database?: any) => {
     if (value === null || value === undefined) return 'N/A';
     
+    // LOG TEMPORAL: Detectar campos específicos problemáticos
+    if (fieldName === 'Estado' || fieldName === 'Uso') {
+      console.log(`🔍 CAMPO PROBLEMÁTICO "${fieldName}" - Tipo: ${fieldType}, Valor:`, value);
+    }
+    
     switch (fieldType) {
       case 'checkbox':
         // Manejo mejorado para checkboxes de Notion
@@ -472,6 +477,11 @@ export const ScanView: React.FC = () => {
         
       case 'select':
       case 'status':
+        // LOG TEMPORAL: Detectar campos específicos en select/status
+        if (fieldName === 'Estado' || fieldName === 'Uso') {
+          console.log(`🔍 SELECT/STATUS CASE - Campo "${fieldName}":`, value);
+        }
+        
         // Manejo mejorado para select/status - extraer nombre legible
         if (typeof value === 'object' && value !== null) {
           if (value.name) return value.name;
