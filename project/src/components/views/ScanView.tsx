@@ -597,6 +597,26 @@ export const ScanView: React.FC = () => {
         if (Array.isArray(value)) {
           console.log('🔍 RELATION DEBUG - Processing array of relations:', value);
           const relationNames = value.map(rel => {
+            if (typeof rel === 'string') {
+              // El valor ya es un string UUID directo
+              if (database && database.properties && fieldName) {
+                const prop = database.properties[fieldName];
+                if (prop && prop.type === 'relation' && prop.relationOptions) {
+                  console.log('🔍 RELATION ARRAY STRING - Searching for UUID:', rel);
+                  console.log('🔍 RELATION ARRAY STRING - UUID prefix:', rel.substring(0, 8));
+                  console.log('🔍 RELATION ARRAY STRING - Available UUID prefixes:', 
+                    prop.relationOptions.slice(0, 5).map((opt: any) => `${opt.id.substring(0, 8)}... (${opt.name})`)
+                  );
+                  const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel);
+                  if (relationOption && relationOption.name) {
+                    console.log('🔍 RELATION ARRAY STRING - ✅ Found name:', relationOption.name);
+                    return relationOption.name;
+                  }
+                  console.log('🔍 RELATION ARRAY STRING - ❌ UUID not found, showing raw UUID');
+                }
+              }
+              return rel; // Devolver el UUID tal como está
+            }
             if (typeof rel === 'object' && rel !== null && rel.id) {
               // Intentar usar metadata de relaciones si está disponible
               if (database && database.properties && fieldName) {
