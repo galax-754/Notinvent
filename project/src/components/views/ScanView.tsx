@@ -765,6 +765,32 @@ export const ScanView: React.FC = () => {
           }
         }
         
+        // NUEVO: Si el valor es un objeto con ID, intentar tratarlo como relación/select
+        if (typeof value === 'object' && value !== null && value.id && !value.name) {
+          console.log(`🔍 DEFAULT OBJECT DEBUG - Field "${fieldName}" has object with ID:`, value.id);
+          if (database?.properties && fieldName) {
+            const prop = database.properties[fieldName];
+            console.log(`🔍 DEFAULT OBJECT DEBUG - Field type:`, prop?.type);
+            console.log(`🔍 DEFAULT OBJECT DEBUG - Property info:`, {
+              type: prop?.type,
+              hasRelationOptions: !!(prop?.relationOptions),
+              relationOptionsCount: prop?.relationOptions?.length || 0
+            });
+            if (prop && prop.relationOptions) {
+              console.log(`🔍 DEFAULT OBJECT DEBUG - Available options:`, 
+                prop.relationOptions.slice(0, 3).map((opt: any) => `${opt.id.substring(0, 8)}... (${opt.name})`)
+              );
+              const relationOption = prop.relationOptions.find((opt: any) => opt.id === value.id);
+              console.log(`🔍 DEFAULT OBJECT DEBUG - Object ID lookup:`, value.id, 'Found:', relationOption);
+              if (relationOption && relationOption.name) {
+                console.log(`🔍 DEFAULT OBJECT DEBUG - ✅ Found name:`, relationOption.name);
+                return relationOption.name;
+              }
+              console.log(`🔍 DEFAULT OBJECT DEBUG - ❌ Object ID not found in relationOptions`);
+            }
+          }
+        }
+        
         // Para tipos no especificados, usar getArticuloNombreYNumero si es apropiado
         const defaultResult = getArticuloNombreYNumero(value, database);
         return defaultResult !== 'Sin nombre' ? defaultResult : extractName(value);
