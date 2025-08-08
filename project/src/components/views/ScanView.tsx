@@ -585,6 +585,15 @@ export const ScanView: React.FC = () => {
         // DEBUG: Problema específico con "Relacionada con Inventario general"
         if (fieldName === 'Relacionada con Inventario general') {
           console.log('🔍 RELACION DEBUG:', fieldName, '- Valor:', value, '- Tiene relationOptions:', !!dbToUse?.properties?.[fieldName]?.relationOptions);
+          if (dbToUse?.properties?.[fieldName]?.relationOptions) {
+            const relationOpts = dbToUse.properties[fieldName].relationOptions;
+            console.log('🔍 RelationOptions sample (primeras 5):', relationOpts.slice(0, 5));
+            console.log('🔍 Buscando UUIDs:', value);
+            value.forEach((uuid: string, idx: number) => {
+              const found = relationOpts.find((opt: any) => opt.id === uuid);
+              console.log(`🔍 UUID[${idx}] ${uuid}: ${found ? `ENCONTRADO → ${found.name}` : 'NO ENCONTRADO'}`);
+            });
+          }
         }
         
         // NUEVO: Si el valor es un string JSON serializado, parsearlo primero (igual que en select/status)
