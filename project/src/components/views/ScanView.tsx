@@ -640,7 +640,8 @@ export const ScanView: React.FC = () => {
             valueType: typeof value,
             isArray: Array.isArray(value),
             stringifiedValue: JSON.stringify(value, null, 2),
-            database: database?.name,
+            databaseParam: database?.name,
+            databaseFromContext: database?.name,
             properties: database?.properties ? Object.keys(database.properties) : 'No properties',
             specificProperty: database?.properties?.[fieldName],
             relationOptions: database?.properties?.[fieldName]?.relationOptions ? 
@@ -664,27 +665,23 @@ export const ScanView: React.FC = () => {
         if (Array.isArray(parsedRelationValue)) {
           const relationNames = parsedRelationValue.map(rel => {
             if (typeof rel === 'string') {
-              // El valor ya es un string UUID directo
-              if (database && database.properties && fieldName) {
-                const prop = database.properties[fieldName];
-                if (prop && prop.type === 'relation' && prop.relationOptions) {
-                  const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel);
-                  if (relationOption && relationOption.name) {
-                    return relationOption.name;
-                  }
+              // El valor ya es un string UUID directo - usar database del contexto directamente
+              const prop = database?.properties?.[fieldName!];
+              if (prop && prop.type === 'relation' && prop.relationOptions) {
+                const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel);
+                if (relationOption && relationOption.name) {
+                  return relationOption.name;
                 }
               }
               return rel; // Devolver el UUID tal como está
             }
             if (typeof rel === 'object' && rel !== null && rel.id) {
-              // Intentar usar metadata de relaciones si está disponible
-              if (database && database.properties && fieldName) {
-                const prop = database.properties[fieldName];
-                if (prop && prop.type === 'relation' && prop.relationOptions) {
-                  const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel.id);
-                  if (relationOption && relationOption.name) {
-                    return relationOption.name;
-                  }
+              // Intentar usar metadata de relaciones si está disponible - usar database del contexto
+              const prop = database?.properties?.[fieldName!];
+              if (prop && prop.type === 'relation' && prop.relationOptions) {
+                const relationOption = prop.relationOptions.find((opt: any) => opt.id === rel.id);
+                if (relationOption && relationOption.name) {
+                  return relationOption.name;
                 }
               }
               // Fallback a mostrar ID de forma legible
@@ -697,14 +694,12 @@ export const ScanView: React.FC = () => {
         
         // Si es un objeto individual de relación
         if (typeof parsedRelationValue === 'object' && parsedRelationValue !== null && parsedRelationValue.id) {
-          // Para relaciones individuales
-          if (database && database.properties && fieldName) {
-            const prop = database.properties[fieldName];
-            if (prop && prop.type === 'relation' && prop.relationOptions) {
-              const relationOption = prop.relationOptions.find((opt: any) => opt.id === parsedRelationValue.id);
-              if (relationOption && relationOption.name) {
-                return relationOption.name;
-              }
+          // Para relaciones individuales - usar database del contexto
+          const prop = database?.properties?.[fieldName!];
+          if (prop && prop.type === 'relation' && prop.relationOptions) {
+            const relationOption = prop.relationOptions.find((opt: any) => opt.id === parsedRelationValue.id);
+            if (relationOption && relationOption.name) {
+              return relationOption.name;
             }
           }
           return `ID: ${parsedRelationValue.id}`;
@@ -713,8 +708,8 @@ export const ScanView: React.FC = () => {
         // Si es un string UUID directo
         if (typeof parsedRelationValue === 'string') {
           const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parsedRelationValue);
-          if (isUUID && database?.properties && fieldName) {
-            const prop = database.properties[fieldName];
+          if (isUUID) {
+            const prop = database?.properties?.[fieldName!];
             if (prop && prop.type === 'relation' && prop.relationOptions) {
               const relationOption = prop.relationOptions.find((opt: any) => opt.id === parsedRelationValue);
               if (relationOption && relationOption.name) {
