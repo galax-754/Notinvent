@@ -301,24 +301,109 @@ export const DashboardView: React.FC = () => {
     return icons[iconName] || Info;
   };
 
-  // ✅ FUNCIÓN ACTUALIZADA: Format field value for display con formato mejorado para relaciones
+  // ✅ FUNCIÓN ACTUALIZADA: Format field value for display con manejo completo de objetos JSON serializados
   const formatFieldValue = (value: any, fieldType: string, fieldName?: string) => {
     if (value === null || value === undefined) return 'N/A';
     
     switch (fieldType) {
       case 'checkbox':
+        // Manejo mejorado para checkboxes de Notion
+        if (typeof value === 'boolean') return value ? '✓ Sí' : '✗ No';
+        if (typeof value === 'object' && value !== null) {
+          if ('checkbox' in value) return value.checkbox ? '✓ Sí' : '✗ No';
+          if ('checked' in value) return value.checked ? '✓ Sí' : '✗ No';
+        }
         return value ? '✓ Sí' : '✗ No';
       case 'date':
         // ✅ USAR LA NUEVA FUNCIÓN DE FORMATEO DE FECHAS
         return formatDateForDisplay(value);
       case 'number':
-        return typeof value === 'number' ? value.toLocaleString() : value;
+        // Manejo mejorado para números de Notion
+        if (typeof value === 'number') return value.toLocaleString();
+        if (typeof value === 'object' && value !== null && 'number' in value) {
+          return typeof value.number === 'number' ? value.number.toLocaleString() : value.number;
+        }
+        return value;
       case 'multi_select':
-        return Array.isArray(value) ? value.join(', ') : value;
+        // Manejo mejorado para multi-select
+        if (Array.isArray(value)) {
+          const names = value.map(item => {
+            if (typeof item === 'object' && item !== null) {
+              if (item.name) return item.name;
+              if (item.id && database?.properties && fieldName) {
+                const prop = database.properties[fieldName];
+                if (prop && prop.type === 'multi_select' && prop.relationOptions) {
+                  const option = prop.relationOptions.find((opt: any) => opt.id === item.id);
+                  if (option && option.name) return option.name;
+                }
+              }
+            }
+            return safeStringValue(item);
+          }).filter(name => name !== 'N/A');
+          return names.length > 0 ? names.join(', ') : 'N/A';
+        }
+        return Array.isArray(value) ? value.join(', ') : safeStringValue(value);
       case 'select':
       case 'status':
-        // ✅ SOLUCIÓN PRINCIPAL: Para campos select, extraer solo el valor limpio
-        const selectValue = extractSelectValue(value);
+        // ✅ NUEVO: Si el valor es un string JSON serializado, parsearlo primero
+        let parsedSelectValue = value;
+        if (typeof value === 'string' && (value.startsWith('{"') || value.startsWith('{'))) {
+          try {
+            parsedSelectValue = JSON.parse(value);
+          } catch (e) {
+            parsedSelectValue = value;
+          }
+        }
+        
+        // Manejo mejorado para select/status - extraer nombre legible
+        if (typeof parsedSelectValue === 'object' && parsedSelectValue !== null) {
+          if (parsedSelectValue.name) {
+            const selectValue = parsedSelectValue.name;
+            
+            // Si es un campo de estado/condición, aplicar traducción
+            if (fieldName && (fieldName.toLowerCase().includes('condition') || fieldName.toLowerCase().includes('condicion'))) {
+              return getConditionText(selectValue);
+            }
+            
+            if (fieldName && (fieldName.toLowerCase().includes('status') || fieldName.toLowerCase().includes('estado'))) {
+              return getStatusText(selectValue);
+            }
+            
+            return selectValue;
+          }
+          
+          // Si es un objeto con ID, buscar el nombre en las opciones reales
+          if (parsedSelectValue.id && database?.properties && fieldName) {
+            const property = database.properties[fieldName];
+            if (property && (property.type === 'select' || property.type === 'status')) {
+              const options = property.options || [];
+              const option = options.find((opt: any) => {
+                // Manejar tanto objetos como strings
+                if (typeof opt === 'object' && opt !== null && opt.id) {
+                  return opt.id === parsedSelectValue.id;
+                }
+                return false;
+              }) as any;
+              if (option && option.name) {
+                const selectValue = option.name;
+                
+                // Aplicar traducción si es necesario
+                if (fieldName && (fieldName.toLowerCase().includes('condition') || fieldName.toLowerCase().includes('condicion'))) {
+                  return getConditionText(selectValue);
+                }
+                
+                if (fieldName && (fieldName.toLowerCase().includes('status') || fieldName.toLowerCase().includes('estado'))) {
+                  return getStatusText(selectValue);
+                }
+                
+                return selectValue;
+              }
+            }
+          }
+        }
+        
+        // Extraer usando la función helper
+        const selectValue = extractSelectValue(parsedSelectValue);
         
         // Si es un campo de estado/condición, aplicar traducción
         if (fieldName && (fieldName.toLowerCase().includes('condition') || fieldName.toLowerCase().includes('condicion'))) {
@@ -446,6 +531,37 @@ export const DashboardView: React.FC = () => {
           </a>
         ) : 'N/A';
       default:
+        // ✅ NUEVO: Para tipos no especificados, detectar si es JSON serializado
+        if (typeof value === 'string' && (value.startsWith('{"') || value.startsWith('{'))) {
+          try {
+            const parsedValue = JSON.parse(value);
+            
+            // Si el objeto parseado tiene estructura de select/status de Notion
+            if (typeof parsedValue === 'object' && parsedValue !== null) {
+              if (parsedValue.name) {
+                return parsedValue.name;
+              }
+              if (parsedValue.id && database?.properties && fieldName) {
+                const prop = database.properties[fieldName];
+                if (prop && prop.relationOptions) {
+                  const option = prop.relationOptions.find((opt: any) => opt.id === parsedValue.id);
+                  if (option && option.name) {
+                    return option.name;
+                  }
+                }
+                // Formato legible para IDs
+                const parts = parsedValue.id.split('-');
+                if (parts.length >= 2) {
+                  return `Item-${parts[0].substring(0, 6)}`;
+                }
+                return `Item-${parsedValue.id.substring(0, 8)}`;
+              }
+            }
+          } catch (e) {
+            // Si no se puede parsear, usar valor original
+          }
+        }
+        
         // Para tipos no especificados, intentar detectar si es una relación por el formato
         if (typeof value === 'string') {
           const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
