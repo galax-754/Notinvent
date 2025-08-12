@@ -310,7 +310,7 @@ export const DashboardView: React.FC = () => {
 
         <div className="grid grid-cols-1 gap-6 lg:gap-8">
           {/* Recent Activity */}
-          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/50 shadow-sm max-w-2xl mx-auto">
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-xl lg:rounded-2xl p-4 sm:p-6 border border-gray-200/50 dark:border-gray-700/50 shadow-sm">
             <div className="flex items-center space-x-2 mb-4 sm:mb-6">
               <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-400" />
               <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">{t('dashboard.recentActivity')}</h2>
