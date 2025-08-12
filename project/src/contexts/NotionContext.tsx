@@ -469,10 +469,23 @@ export const NotionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Load Notion config from localStorage (for now, until we migrate it to server)
         const savedConfig = localStorage.getItem('notion-config');
         if (savedConfig) {
-          const parsedConfig = JSON.parse(savedConfig);
-          setConfig(parsedConfig);
-          // Auto-connect if config exists
-          connectToNotion(parsedConfig);
+          try {
+            const parsedConfig = JSON.parse(savedConfig);
+            // Validate that the config has the required fields
+            if (parsedConfig && parsedConfig.token && parsedConfig.databaseId) {
+              setConfig(parsedConfig);
+              // Auto-connect if config exists and is valid
+              connectToNotion(parsedConfig);
+            } else {
+              console.warn('Invalid Notion configuration found in localStorage, skipping auto-connect');
+              // Clear invalid config
+              localStorage.removeItem('notion-config');
+            }
+          } catch (parseError) {
+            console.error('Error parsing Notion configuration from localStorage:', parseError);
+            // Clear corrupted config
+            localStorage.removeItem('notion-config');
+          }
         }
       } catch (error) {
         console.error('Error loading user configuration:', error);
@@ -489,36 +502,65 @@ export const NotionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const savedHistory = localStorage.getItem('scan-history');
 
       if (savedConfig) {
-        const parsedConfig = JSON.parse(savedConfig);
-        setConfig(parsedConfig);
-        connectToNotion(parsedConfig);
+        try {
+          const parsedConfig = JSON.parse(savedConfig);
+          // Validate that the config has the required fields
+          if (parsedConfig && parsedConfig.token && parsedConfig.databaseId) {
+            setConfig(parsedConfig);
+            connectToNotion(parsedConfig);
+          } else {
+            console.warn('Invalid Notion configuration found in localStorage, skipping auto-connect');
+            // Clear invalid config
+            localStorage.removeItem('notion-config');
+          }
+        } catch (parseError) {
+          console.error('Error parsing Notion configuration from localStorage:', parseError);
+          // Clear corrupted config
+          localStorage.removeItem('notion-config');
+        }
       }
 
       if (savedConfigurations) {
-        setScanConfigurations(JSON.parse(savedConfigurations));
+        try {
+          setScanConfigurations(JSON.parse(savedConfigurations));
+        } catch (parseError) {
+          console.error('Error parsing scan configurations from localStorage:', parseError);
+          localStorage.removeItem('scan-configurations');
+        }
       }
 
       if (savedDisplayConfigurations) {
-        const configs = JSON.parse(savedDisplayConfigurations);
-        setDisplayConfigurations(configs);
-        
-        if (savedActiveDisplayConfig) {
-          const activeConfig = configs.find((c: DisplayConfiguration) => c.id === savedActiveDisplayConfig);
-          if (activeConfig) {
-            setActiveDisplayConfigState(activeConfig);
+        try {
+          const configs = JSON.parse(savedDisplayConfigurations);
+          setDisplayConfigurations(configs);
+          
+          if (savedActiveDisplayConfig) {
+            const activeConfig = configs.find((c: DisplayConfiguration) => c.id === savedActiveDisplayConfig);
+            if (activeConfig) {
+              setActiveDisplayConfigState(activeConfig);
+            }
+          } else if (configs.length > 0) {
+            setActiveDisplayConfigState(configs[0]);
           }
-        } else if (configs.length > 0) {
-          setActiveDisplayConfigState(configs[0]);
+        } catch (parseError) {
+          console.error('Error parsing display configurations from localStorage:', parseError);
+          localStorage.removeItem('display-configurations');
+          localStorage.removeItem('active-display-config');
         }
       }
 
       if (savedHistory) {
-        const parsedHistory = JSON.parse(savedHistory);
-        const historyWithDates = parsedHistory.map((entry: any) => ({
-          ...entry,
-          scanTime: new Date(entry.scanTime)
-        }));
-        setScanHistory(historyWithDates);
+        try {
+          const parsedHistory = JSON.parse(savedHistory);
+          const historyWithDates = parsedHistory.map((entry: any) => ({
+            ...entry,
+            scanTime: new Date(entry.scanTime)
+          }));
+          setScanHistory(historyWithDates);
+        } catch (parseError) {
+          console.error('Error parsing scan history from localStorage:', parseError);
+          localStorage.removeItem('scan-history');
+        }
       }
     };
 
@@ -627,9 +669,9 @@ export const NotionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             createDefaultDisplayConfiguration(dbInfo);
           }
 
-          // Create default attention configuration if none exists
-          if (attentionConfigurations.length === 0) {
-            createDefaultAttentionConfiguration(dbInfo);
+          // Create default display configuration if none exists
+          if (displayConfigurations.length === 0) {
+            createDefaultDisplayConfiguration(dbInfo);
           }
         }
         
@@ -673,55 +715,7 @@ export const NotionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setActiveDisplayConfigState(defaultConfig);
   };
 
-  const createDefaultAttentionConfiguration = (database: NotionDatabase) => {
-    const criteria: AttentionCriterion[] = [];
-    
-    // Look for common fields and create default criteria
-    Object.keys(database.properties).forEach((fieldName, index) => {
-      const fieldType = database.properties[fieldName].type;
-      const lowerFieldName = fieldName.toLowerCase();
-      
-      // Condition field
-      if (lowerFieldName.includes('condition') || lowerFieldName.includes('condicion')) {
-        criteria.push({
-          id: `criteria-condition-${index}`,
-          fieldName,
-          fieldType,
-          condition: 'equals',
-          value: 'Poor',
-          priority: 'high',
-          enabled: true,
-          description: `Artículos con ${fieldName} = Poor`
-        });
-      }
-      
-      // Stock field
-      if ((lowerFieldName.includes('stock') || lowerFieldName.includes('available')) && fieldType === 'checkbox') {
-        criteria.push({
-          id: `criteria-stock-${index}`,
-          fieldName,
-          fieldType,
-          condition: 'is_false',
-          priority: 'medium',
-          enabled: true,
-          description: `Artículos sin ${fieldName}`
-        });
-      }
-    });
 
-    if (criteria.length > 0) {
-      const defaultConfig: AttentionConfiguration = {
-        id: 'default-attention-config',
-        name: 'Criterios por Defecto',
-        operator: 'OR',
-        enabled: true,
-        criteria
-      };
-      
-      setAttentionConfigurations([defaultConfig]);
-      setActiveAttentionConfigState(defaultConfig);
-    }
-  };
 
   const getDefaultIconForFieldType = (fieldType: string): string => {
     switch (fieldType) {
@@ -745,15 +739,11 @@ export const NotionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setItems([]);
     setDisplayConfigurations([]);
     setActiveDisplayConfigState(null);
-    setAttentionConfigurations([]);
-    setActiveAttentionConfigState(null);
     setIsConnected(false);
     setIsDemoMode(false);
     localStorage.removeItem('notion-config');
     localStorage.removeItem('display-configurations');
     localStorage.removeItem('active-display-config');
-    localStorage.removeItem('attention-configurations');
-    localStorage.removeItem('active-attention-config');
     localStorage.removeItem('demo-mode');
     notionService.disconnect();
     toast.success('Disconnected from Notion');
