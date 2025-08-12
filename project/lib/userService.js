@@ -358,3 +358,128 @@ export async function deleteUserConfiguration(userId) {
     return false;
   }
 }
+
+/**
+ * 📊 FUNCIÓN PARA OBTENER CONFIGURACIONES DE USUARIO
+ * 
+ * Obtiene todas las configuraciones de la aplicación del usuario.
+ * 
+ * @param {string} userId - ID del usuario
+ * @returns {Promise<Object|null>} Configuraciones del usuario o null
+ */
+export async function getUserAppConfigurations(userId) {
+  try {
+    console.log('📊 Obteniendo configuraciones de app para usuario:', userId);
+
+    const configurationsCollection = await getConfigurationsCollection();
+    const config = await configurationsCollection.findOne({
+      userId: new ObjectId(userId),
+      type: 'app-config',
+      isActive: true,
+    });
+
+    if (config) {
+      console.log('✅ Configuraciones de app encontradas');
+      return {
+        id: config._id.toString(),
+        userId: userId,
+        scanConfigurations: config.scanConfigurations || [],
+        displayConfigurations: config.displayConfigurations || [],
+        activeDisplayConfig: config.activeDisplayConfig || null,
+        scanHistory: config.scanHistory || [],
+        demoMode: config.demoMode || false,
+        updatedAt: config.updatedAt.toISOString(),
+      };
+    } else {
+      console.log('❌ Configuraciones de app no encontradas');
+      return null;
+    }
+
+  } catch (error) {
+    console.error('❌ Error obteniendo configuraciones de app:', error);
+    return null;
+  }
+}
+
+/**
+ * 💾 FUNCIÓN PARA GUARDAR CONFIGURACIONES DE USUARIO
+ * 
+ * Guarda las configuraciones de la aplicación del usuario.
+ * 
+ * @param {string} userId - ID del usuario
+ * @param {Object} config - Configuraciones a guardar
+ * @returns {Promise<Object>} Configuración guardada
+ */
+export async function saveUserAppConfigurations(userId, config) {
+  try {
+    console.log('💾 Guardando configuraciones de app para usuario:', userId);
+
+    const configToSave = {
+      userId: new ObjectId(userId),
+      type: 'app-config',
+      scanConfigurations: config.scanConfigurations || [],
+      displayConfigurations: config.displayConfigurations || [],
+      activeDisplayConfig: config.activeDisplayConfig || null,
+      scanHistory: config.scanHistory || [],
+      demoMode: config.demoMode || false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isActive: true,
+    };
+
+    const configurationsCollection = await getConfigurationsCollection();
+    
+    // Usar upsert para actualizar si existe o crear si no existe
+    const result = await configurationsCollection.replaceOne(
+      { userId: new ObjectId(userId), type: 'app-config' },
+      configToSave,
+      { upsert: true }
+    );
+
+    console.log('✅ Configuraciones de app guardadas exitosamente');
+    
+    return {
+      id: result.upsertedId?.toString() || 'updated',
+      userId: userId,
+      scanConfigurations: configToSave.scanConfigurations,
+      displayConfigurations: configToSave.displayConfigurations,
+      activeDisplayConfig: configToSave.activeDisplayConfig,
+      scanHistory: configToSave.scanHistory,
+      demoMode: configToSave.demoMode,
+      updatedAt: configToSave.updatedAt.toISOString(),
+    };
+
+  } catch (error) {
+    console.error('❌ Error guardando configuraciones de app:', error);
+    throw error;
+  }
+}
+
+/**
+ * 🗑️ FUNCIÓN PARA ELIMINAR CONFIGURACIONES DE USUARIO
+ * 
+ * Elimina las configuraciones de la aplicación del usuario.
+ * 
+ * @param {string} userId - ID del usuario
+ * @returns {Promise<boolean>} true si se eliminó exitosamente
+ */
+export async function deleteUserAppConfigurations(userId) {
+  try {
+    console.log('🗑️ Eliminando configuraciones de app para usuario:', userId);
+
+    const configurationsCollection = await getConfigurationsCollection();
+    const result = await configurationsCollection.deleteOne({
+      userId: new ObjectId(userId),
+      type: 'app-config',
+    });
+
+    const success = result.deletedCount > 0;
+    console.log(`${success ? '✅' : '❌'} Configuraciones de app ${success ? 'eliminadas' : 'no encontradas'}`);
+    
+    return success;
+
+  } catch (error) {
+    console.error('❌ Error eliminando configuraciones de app:', error);
+    return false;
+  }
+}

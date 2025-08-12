@@ -11,7 +11,10 @@ import { verifyToken } from '../../lib/auth.js';
 import { 
   getUserConfiguration, 
   saveUserConfiguration, 
-  deleteUserConfiguration 
+  deleteUserConfiguration,
+  getUserAppConfigurations,
+  saveUserAppConfigurations,
+  deleteUserAppConfigurations
 } from '../../lib/userService.js';
 
 export default async function handler(req, res) {
@@ -88,22 +91,34 @@ async function handleGetConfig(res, userId) {
   try {
     console.log('📖 Obteniendo configuración para usuario:', userId);
     
-    const config = await getUserConfiguration(userId);
+    // Obtener configuración de Notion
+    const notionConfig = await getUserConfiguration(userId);
     
-    if (config) {
-      // No retornar el token completo por seguridad
-      const safeConfig = {
-        id: config.id,
-        databaseId: config.databaseId,
-        workspaceName: config.workspaceName,
-        updatedAt: config.updatedAt,
-        hasToken: !!config.notionToken, // Solo indicar si existe
-      };
-
-      return res.status(200).json({
+    // Obtener configuraciones de la aplicación
+    const appConfig = await getUserAppConfigurations(userId);
+    
+    if (notionConfig || appConfig) {
+      const response = {
         success: true,
-        config: safeConfig
-      });
+        notionConfig: notionConfig ? {
+          id: notionConfig.id,
+          databaseId: notionConfig.databaseId,
+          workspaceName: notionConfig.workspaceName,
+          updatedAt: notionConfig.updatedAt,
+          hasToken: !!notionConfig.notionToken, // Solo indicar si existe
+        } : null,
+        appConfig: appConfig ? {
+          id: appConfig.id,
+          scanConfigurations: appConfig.scanConfigurations,
+          displayConfigurations: appConfig.displayConfigurations,
+          activeDisplayConfig: appConfig.activeDisplayConfig,
+          scanHistory: appConfig.scanHistory,
+          demoMode: appConfig.demoMode,
+          updatedAt: appConfig.updatedAt,
+        } : null
+      };
+      
+      return res.status(200).json(response);
     } else {
       return res.status(404).json({
         error: 'Configuración no encontrada'
@@ -123,24 +138,36 @@ async function handleSaveConfig(req, res, userId) {
   try {
     console.log('💾 Guardando configuración para usuario:', userId);
     
-    const { notionToken, databaseId, workspaceName } = req.body;
+    const { notionToken, databaseId, workspaceName, config } = req.body;
 
-    if (!notionToken || !databaseId) {
-      return res.status(400).json({
-        error: 'Token de Notion y Database ID son requeridos'
+    // Si se envía configuración de Notion
+    if (notionToken && databaseId) {
+      const savedNotionConfig = await saveUserConfiguration(userId, {
+        notionToken,
+        databaseId,
+        workspaceName
+      });
+
+      return res.status(200).json({
+        success: true,
+        notionConfig: savedNotionConfig,
+        message: 'Configuración de Notion guardada exitosamente'
       });
     }
 
-    const savedConfig = await saveUserConfiguration(userId, {
-      notionToken,
-      databaseId,
-      workspaceName
-    });
+    // Si se envía configuración de la aplicación
+    if (config) {
+      const savedAppConfig = await saveUserAppConfigurations(userId, config);
 
-    return res.status(200).json({
-      success: true,
-      config: savedConfig,
-      message: 'Configuración guardada exitosamente'
+      return res.status(200).json({
+        success: true,
+        appConfig: savedAppConfig,
+        message: 'Configuración de la aplicación guardada exitosamente'
+      });
+    }
+
+    return res.status(400).json({
+      error: 'Se requiere configuración de Notion o de la aplicación'
     });
 
   } catch (error) {
@@ -164,12 +191,16 @@ async function handleDeleteConfig(res, userId) {
   try {
     console.log('🗑️ Eliminando configuración para usuario:', userId);
     
-    const deleted = await deleteUserConfiguration(userId);
+    // Eliminar configuración de Notion
+    const deletedNotion = await deleteUserConfiguration(userId);
     
-    if (deleted) {
+    // Eliminar configuraciones de la aplicación
+    const deletedApp = await deleteUserAppConfigurations(userId);
+    
+    if (deletedNotion || deletedApp) {
       return res.status(200).json({
         success: true,
-        message: 'Configuración eliminada exitosamente'
+        message: 'Configuraciones eliminadas exitosamente'
       });
     } else {
       return res.status(404).json({

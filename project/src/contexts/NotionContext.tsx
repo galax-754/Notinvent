@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { NotionConfig, NotionDatabase, InventoryItem, ScanConfiguration, ScanHistory, DisplayConfiguration, AttentionConfiguration, AttentionCriterion } from '../types/notion';
+import { NotionConfig, NotionDatabase, InventoryItem, ScanConfiguration, ScanHistory, DisplayConfiguration } from '../types/notion';
 import { notionService } from '../services/notionService';
+import { userConfigService } from '../services/userConfigService';
 import { useLanguage } from './LanguageContext';
 import toast from 'react-hot-toast';
 
@@ -11,8 +12,7 @@ interface NotionContextType {
   scanConfigurations: ScanConfiguration[];
   displayConfigurations: DisplayConfiguration[];
   activeDisplayConfig: DisplayConfiguration | null;
-  attentionConfigurations: AttentionConfiguration[];
-  activeAttentionConfig: AttentionConfiguration | null;
+
   scanHistory: ScanHistory[];
   isConnected: boolean;
   isLoading: boolean;
@@ -32,11 +32,9 @@ interface NotionContextType {
   updateDisplayConfiguration: (config: DisplayConfiguration) => void;
   deleteDisplayConfiguration: (id: string) => void;
   setActiveDisplayConfig: (configId: string | null) => void;
-  addAttentionConfiguration: (config: Omit<AttentionConfiguration, 'id'>) => void;
-  updateAttentionConfiguration: (config: AttentionConfiguration) => void;
-  deleteAttentionConfiguration: (id: string) => void;
-  setActiveAttentionConfig: (configId: string | null) => void;
-  getItemsNeedingAttention: () => InventoryItem[];
+
+
+
   getFieldOptions: (fieldName: string) => Promise<string[]>; // ✅ NUEVA FUNCIÓN
   addScanHistory: (entry: Omit<ScanHistory, 'id'>) => void;
 }
@@ -400,90 +398,7 @@ const demoDisplayConfigurations: DisplayConfiguration[] = [
   }
 ];
 
-// ✅ NUEVO: Configuraciones de Criterios de Atención Demo
-const demoAttentionConfigurations: AttentionConfiguration[] = [
-  {
-    id: 'demo-attention-1',
-    name: 'Criterios por Defecto',
-    operator: 'OR',
-    enabled: true,
-    criteria: [
-      {
-        id: 'criteria-1',
-        fieldName: 'Condition',
-        fieldType: 'select',
-        condition: 'equals',
-        value: 'Poor',
-        priority: 'high',
-        enabled: true,
-        description: 'Artículos en mal estado'
-      },
-      {
-        id: 'criteria-2',
-        fieldName: 'Stock Available',
-        fieldType: 'checkbox',
-        condition: 'is_false',
-        priority: 'medium',
-        enabled: true,
-        description: 'Artículos sin stock'
-      }
-    ]
-  },
-  {
-    id: 'demo-attention-2',
-    name: 'Código Pegado Faltante',
-    operator: 'AND',
-    enabled: false,
-    criteria: [
-      {
-        id: 'criteria-3',
-        fieldName: 'Codigo Pegado',
-        fieldType: 'checkbox',
-        condition: 'is_false',
-        priority: 'medium',
-        enabled: true,
-        description: 'Artículos sin código pegado'
-      },
-      {
-        id: 'criteria-4',
-        fieldName: 'Status',
-        fieldType: 'select',
-        condition: 'equals',
-        value: 'Active',
-        priority: 'low',
-        enabled: true,
-        description: 'Solo artículos activos'
-      }
-    ]
-  },
-  {
-    id: 'demo-attention-3',
-    name: 'Mantenimiento Requerido',
-    operator: 'OR',
-    enabled: false,
-    criteria: [
-      {
-        id: 'criteria-5',
-        fieldName: 'Needs Maintenance',
-        fieldType: 'checkbox',
-        condition: 'is_true',
-        priority: 'high',
-        enabled: true,
-        description: 'Artículos que necesitan mantenimiento'
-      },
-      {
-        id: 'criteria-6',
-        fieldName: 'Status',
-        fieldType: 'select',
-        condition: 'equals',
-        value: 'Maintenance',
-        priority: 'high',
-        enabled: true,
-        description: 'Artículos en mantenimiento'
-      }
-    ]
-  }
-];
+
 
 export const NotionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState<NotionConfig | null>(null);
@@ -492,121 +407,166 @@ export const NotionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [scanConfigurations, setScanConfigurations] = useState<ScanConfiguration[]>([]);
   const [displayConfigurations, setDisplayConfigurations] = useState<DisplayConfiguration[]>([]);
   const [activeDisplayConfig, setActiveDisplayConfigState] = useState<DisplayConfiguration | null>(null);
-  const [attentionConfigurations, setAttentionConfigurations] = useState<AttentionConfiguration[]>([]);
-  const [activeAttentionConfig, setActiveAttentionConfigState] = useState<AttentionConfiguration | null>(null);
+
   const [scanHistory, setScanHistory] = useState<ScanHistory[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
-  // Load saved data from localStorage
+  // Load saved data from server
   useEffect(() => {
-    const savedConfig = localStorage.getItem('notion-config');
-    const savedConfigurations = localStorage.getItem('scan-configurations');
-    const savedDisplayConfigurations = localStorage.getItem('display-configurations');
-    const savedActiveDisplayConfig = localStorage.getItem('active-display-config');
-    const savedAttentionConfigurations = localStorage.getItem('attention-configurations');
-    const savedActiveAttentionConfig = localStorage.getItem('active-attention-config');
-    const savedHistory = localStorage.getItem('scan-history');
-    const savedDemoMode = localStorage.getItem('demo-mode');
-
-    if (savedDemoMode === 'true') {
-      enableDemoMode();
-      return;
-    }
-
-    if (savedConfig) {
-      const parsedConfig = JSON.parse(savedConfig);
-      setConfig(parsedConfig);
-      // Auto-connect if config exists
-      connectToNotion(parsedConfig);
-    }
-
-    if (savedConfigurations) {
-      setScanConfigurations(JSON.parse(savedConfigurations));
-    }
-
-    if (savedDisplayConfigurations) {
-      const configs = JSON.parse(savedDisplayConfigurations);
-      setDisplayConfigurations(configs);
-      
-      // Set active display config
-      if (savedActiveDisplayConfig) {
-        const activeConfig = configs.find((c: DisplayConfiguration) => c.id === savedActiveDisplayConfig);
-        if (activeConfig) {
-          setActiveDisplayConfigState(activeConfig);
+    const loadUserConfig = async () => {
+      try {
+        const savedDemoMode = localStorage.getItem('demo-mode');
+        
+        if (savedDemoMode === 'true') {
+          enableDemoMode();
+          return;
         }
-      } else if (configs.length > 0) {
-        setActiveDisplayConfigState(configs[0]);
+
+        // Load user configurations from server
+        const userConfig = await userConfigService.getUserConfig();
+        
+        if (userConfig) {
+          // Load scan configurations
+          if (userConfig.scanConfigurations) {
+            setScanConfigurations(userConfig.scanConfigurations);
+          }
+
+          // Load display configurations
+          if (userConfig.displayConfigurations) {
+            setDisplayConfigurations(userConfig.displayConfigurations);
+            
+            // Set active display config
+            if (userConfig.activeDisplayConfig) {
+              const activeConfig = userConfig.displayConfigurations.find(
+                (c: DisplayConfiguration) => c.id === userConfig.activeDisplayConfig
+              );
+              if (activeConfig) {
+                setActiveDisplayConfigState(activeConfig);
+              }
+            } else if (userConfig.displayConfigurations.length > 0) {
+              setActiveDisplayConfigState(userConfig.displayConfigurations[0]);
+            }
+          }
+
+          // Load scan history
+          if (userConfig.scanHistory) {
+            // Convert scanTime strings back to Date objects
+            const historyWithDates = userConfig.scanHistory.map((entry: any) => ({
+              ...entry,
+              scanTime: new Date(entry.scanTime)
+            }));
+            setScanHistory(historyWithDates);
+          }
+
+          // Set demo mode if enabled
+          if (userConfig.demoMode) {
+            setIsDemoMode(true);
+          }
+        }
+
+        // Load Notion config from localStorage (for now, until we migrate it to server)
+        const savedConfig = localStorage.getItem('notion-config');
+        if (savedConfig) {
+          const parsedConfig = JSON.parse(savedConfig);
+          setConfig(parsedConfig);
+          // Auto-connect if config exists
+          connectToNotion(parsedConfig);
+        }
+      } catch (error) {
+        console.error('Error loading user configuration:', error);
+        // Fallback to localStorage if server fails
+        loadFromLocalStorage();
       }
-    }
+    };
 
-    if (savedAttentionConfigurations) {
-      const configs = JSON.parse(savedAttentionConfigurations);
-      setAttentionConfigurations(configs);
-      
-      // Set active attention config
-      if (savedActiveAttentionConfig) {
-        const activeConfig = configs.find((c: AttentionConfiguration) => c.id === savedActiveAttentionConfig);
-        if (activeConfig) {
-          setActiveAttentionConfigState(activeConfig);
-        }
-      } else {
-        // Find first enabled config
-        const enabledConfig = configs.find((c: AttentionConfiguration) => c.enabled);
-        if (enabledConfig) {
-          setActiveAttentionConfigState(enabledConfig);
+    const loadFromLocalStorage = () => {
+      const savedConfig = localStorage.getItem('notion-config');
+      const savedConfigurations = localStorage.getItem('scan-configurations');
+      const savedDisplayConfigurations = localStorage.getItem('display-configurations');
+      const savedActiveDisplayConfig = localStorage.getItem('active-display-config');
+      const savedHistory = localStorage.getItem('scan-history');
+
+      if (savedConfig) {
+        const parsedConfig = JSON.parse(savedConfig);
+        setConfig(parsedConfig);
+        connectToNotion(parsedConfig);
+      }
+
+      if (savedConfigurations) {
+        setScanConfigurations(JSON.parse(savedConfigurations));
+      }
+
+      if (savedDisplayConfigurations) {
+        const configs = JSON.parse(savedDisplayConfigurations);
+        setDisplayConfigurations(configs);
+        
+        if (savedActiveDisplayConfig) {
+          const activeConfig = configs.find((c: DisplayConfiguration) => c.id === savedActiveDisplayConfig);
+          if (activeConfig) {
+            setActiveDisplayConfigState(activeConfig);
+          }
+        } else if (configs.length > 0) {
+          setActiveDisplayConfigState(configs[0]);
         }
       }
-    }
 
-    if (savedHistory) {
-      const parsedHistory = JSON.parse(savedHistory);
-      // Convert scanTime strings back to Date objects
-      const historyWithDates = parsedHistory.map((entry: any) => ({
-        ...entry,
-        scanTime: new Date(entry.scanTime)
-      }));
-      setScanHistory(historyWithDates);
-    }
+      if (savedHistory) {
+        const parsedHistory = JSON.parse(savedHistory);
+        const historyWithDates = parsedHistory.map((entry: any) => ({
+          ...entry,
+          scanTime: new Date(entry.scanTime)
+        }));
+        setScanHistory(historyWithDates);
+      }
+    };
+
+    loadUserConfig();
   }, []);
 
-  // Save configurations to localStorage
-  useEffect(() => {
-    if (scanConfigurations.length > 0 && !isDemoMode) {
+  // Save configurations to server
+  const saveUserConfigToServer = async () => {
+    if (isDemoMode) return;
+    
+    try {
+      const config = {
+        scanConfigurations,
+        displayConfigurations,
+        activeDisplayConfig: activeDisplayConfig?.id || null,
+        scanHistory,
+        demoMode: isDemoMode,
+      };
+      
+      await userConfigService.saveUserConfig(config);
+    } catch (error) {
+      console.error('Error saving user configuration to server:', error);
+      // Fallback to localStorage
+      saveToLocalStorage();
+    }
+  };
+
+  const saveToLocalStorage = () => {
+    if (scanConfigurations.length > 0) {
       localStorage.setItem('scan-configurations', JSON.stringify(scanConfigurations));
     }
-  }, [scanConfigurations, isDemoMode]);
-
-  useEffect(() => {
-    if (displayConfigurations.length > 0 && !isDemoMode) {
+    if (displayConfigurations.length > 0) {
       localStorage.setItem('display-configurations', JSON.stringify(displayConfigurations));
     }
-  }, [displayConfigurations, isDemoMode]);
-
-  useEffect(() => {
-    if (activeDisplayConfig && !isDemoMode) {
+    if (activeDisplayConfig) {
       localStorage.setItem('active-display-config', activeDisplayConfig.id);
     }
-  }, [activeDisplayConfig, isDemoMode]);
-
-  useEffect(() => {
-    if (attentionConfigurations.length > 0 && !isDemoMode) {
-      localStorage.setItem('attention-configurations', JSON.stringify(attentionConfigurations));
-    }
-  }, [attentionConfigurations, isDemoMode]);
-
-  useEffect(() => {
-    if (activeAttentionConfig && !isDemoMode) {
-      localStorage.setItem('active-attention-config', activeAttentionConfig.id);
-    }
-  }, [activeAttentionConfig, isDemoMode]);
-
-  useEffect(() => {
-    if (scanHistory.length > 0 && !isDemoMode) {
+    if (scanHistory.length > 0) {
       localStorage.setItem('scan-history', JSON.stringify(scanHistory));
     }
-  }, [scanHistory, isDemoMode]);
+  };
+
+  // Save configurations when they change
+  useEffect(() => {
+    if (scanConfigurations.length > 0 || displayConfigurations.length > 0 || scanHistory.length > 0) {
+      saveUserConfigToServer();
+    }
+  }, [scanConfigurations, displayConfigurations, activeDisplayConfig, scanHistory, isDemoMode]);
 
   const enableDemoMode = () => {
     setIsDemoMode(true);
@@ -621,8 +581,7 @@ export const NotionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setScanConfigurations(demoScanConfigurations);
     setDisplayConfigurations(demoDisplayConfigurations);
     setActiveDisplayConfigState(demoDisplayConfigurations[0]);
-    setAttentionConfigurations(demoAttentionConfigurations);
-    setActiveAttentionConfigState(demoAttentionConfigurations[0]); // Usar la primera configuración habilitada
+
     setScanHistory(demoScanHistory);
     localStorage.setItem('demo-mode', 'true');
     toast.success('¡Modo demo activado! Explora todas las funcionalidades');
@@ -972,139 +931,7 @@ export const NotionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  // ✅ FUNCIONES: Gestión de Criterios de Atención
-  const addAttentionConfiguration = (config: Omit<AttentionConfiguration, 'id'>) => {
-    const newConfig: AttentionConfiguration = {
-      ...config,
-      id: Date.now().toString(),
-    };
-    setAttentionConfigurations(prev => [...prev, newConfig]);
-  };
 
-  const updateAttentionConfiguration = (config: AttentionConfiguration) => {
-    setAttentionConfigurations(prev => prev.map(c => c.id === config.id ? config : c));
-    
-    // Update active config if it's the one being updated
-    if (activeAttentionConfig?.id === config.id) {
-      setActiveAttentionConfigState(config);
-    }
-  };
-
-  const deleteAttentionConfiguration = (id: string) => {
-    setAttentionConfigurations(prev => prev.filter(c => c.id !== id));
-    
-    // If deleting active config, set first available as active
-    if (activeAttentionConfig?.id === id) {
-      const remaining = attentionConfigurations.filter(c => c.id !== id);
-      const enabledConfig = remaining.find(c => c.enabled);
-      setActiveAttentionConfigState(enabledConfig || null);
-    }
-  };
-
-  const setActiveAttentionConfig = (configId: string | null) => {
-    if (configId) {
-      const config = attentionConfigurations.find(c => c.id === configId);
-      setActiveAttentionConfigState(config || null);
-    } else {
-      setActiveAttentionConfigState(null);
-    }
-  };
-
-  // ✅ FUNCIÓN PRINCIPAL: Evaluar qué artículos necesitan atención
-  const getItemsNeedingAttention = (): InventoryItem[] => {
-    if (!activeAttentionConfig || !activeAttentionConfig.enabled) {
-      console.log('🔍 No active attention configuration or disabled');
-      return [];
-    }
-
-    console.log('🔍 === EVALUATING ATTENTION CRITERIA ===');
-    console.log('🔍 Active config:', activeAttentionConfig.name);
-    console.log('🔍 Operator:', activeAttentionConfig.operator);
-    console.log('🔍 Enabled criteria:', activeAttentionConfig.criteria.filter(c => c.enabled));
-
-    const enabledCriteria = activeAttentionConfig.criteria.filter(c => c.enabled);
-    if (enabledCriteria.length === 0) {
-      console.log('🔍 No enabled criteria');
-      return [];
-    }
-
-    const itemsNeedingAttention = items.filter(item => {
-      const itemId = item.properties['ID'] || item.properties['Name'] || item.id;
-      console.log(`🔍 Evaluating item: ${itemId}`);
-
-      const criteriaResults = enabledCriteria.map(criterion => {
-        const fieldValue = item.properties[criterion.fieldName];
-        const result = evaluateCriterion(criterion, fieldValue);
-        console.log(`🔍   Criterion "${criterion.description}": ${result} (value: ${JSON.stringify(fieldValue)})`);
-        return result;
-      });
-
-      let needsAttention: boolean;
-      if (activeAttentionConfig.operator === 'AND') {
-        needsAttention = criteriaResults.every(result => result);
-      } else { // OR
-        needsAttention = criteriaResults.some(result => result);
-      }
-
-      console.log(`🔍   Final result for ${itemId}: ${needsAttention}`);
-      return needsAttention;
-    });
-
-    console.log(`🔍 Total items needing attention: ${itemsNeedingAttention.length}`);
-    console.log('🔍 === END ATTENTION EVALUATION ===');
-
-    return itemsNeedingAttention;
-  };
-
-  // Helper function to evaluate a single criterion
-  const evaluateCriterion = (criterion: AttentionCriterion, fieldValue: any): boolean => {
-    switch (criterion.condition) {
-      case 'equals':
-        return fieldValue === criterion.value;
-      
-      case 'not_equals':
-        return fieldValue !== criterion.value;
-      
-      case 'empty':
-        return fieldValue === null || fieldValue === undefined || fieldValue === '';
-      
-      case 'not_empty':
-        return fieldValue !== null && fieldValue !== undefined && fieldValue !== '';
-      
-      case 'contains':
-        if (typeof fieldValue === 'string' && typeof criterion.value === 'string') {
-          return fieldValue.toLowerCase().includes(criterion.value.toLowerCase());
-        }
-        return false;
-      
-      case 'not_contains':
-        if (typeof fieldValue === 'string' && typeof criterion.value === 'string') {
-          return !fieldValue.toLowerCase().includes(criterion.value.toLowerCase());
-        }
-        return true;
-      
-      case 'less_than':
-        if (typeof fieldValue === 'number' && typeof criterion.value === 'number') {
-          return fieldValue < criterion.value;
-        }
-        return false;
-      
-      case 'greater_than':
-        if (typeof fieldValue === 'number' && typeof criterion.value === 'number') {
-          return fieldValue > criterion.value;
-        }
-        return false;
-      
-      case 'is_true':
-        return Boolean(fieldValue) === true;
-      
-      case 'is_false':
-        return Boolean(fieldValue) === false;
-      
-      default:
-        return false;
-    }
-  };
 
   // ✅ NUEVA FUNCIÓN: Obtener opciones de un campo específico
   const getFieldOptions = async (fieldName: string): Promise<string[]> => {
@@ -1145,8 +972,7 @@ export const NotionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     scanConfigurations,
     displayConfigurations,
     activeDisplayConfig,
-    attentionConfigurations,
-    activeAttentionConfig,
+
     scanHistory,
     isConnected,
     isLoading,
@@ -1164,11 +990,7 @@ export const NotionProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     updateDisplayConfiguration,
     deleteDisplayConfiguration,
     setActiveDisplayConfig,
-    addAttentionConfiguration,
-    updateAttentionConfiguration,
-    deleteAttentionConfiguration,
-    setActiveAttentionConfig,
-    getItemsNeedingAttention,
+
     getFieldOptions, // ✅ NUEVA FUNCIÓN EXPORTADA
     addScanHistory,
   };
