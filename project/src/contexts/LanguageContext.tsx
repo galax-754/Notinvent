@@ -22,7 +22,7 @@ export const useLanguage = () => {
 const translations = {
   'es-MX': {
     // Header
-    'header.title': 'Inventario Notion',
+    'header.title': 'Notinvent',
     'header.dashboard': 'Panel',
     'header.scan': 'Escanear',
     'header.configuration': 'Configuración',
@@ -259,7 +259,7 @@ const translations = {
   },
   'en-US': {
     // Header
-    'header.title': 'Notion Inventory',
+    'header.title': 'Notinvent',
     'header.dashboard': 'Dashboard',
     'header.scan': 'Scan',
     'header.configuration': 'Configuration',

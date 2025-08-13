@@ -1,0 +1,35 @@
+<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @media (prefers-color-scheme: dark) {
+        .background { fill: #1f2937; }
+        .ring1 { stroke: #d1d5db; }
+        .ring2 { stroke: #9ca3af; }
+        .ring3 { stroke: #6b7280; }
+        .letter { fill: #ffffff; }
+      }
+      @media (prefers-color-scheme: light) {
+        .background { fill: #f3f4f6; }
+        .ring1 { stroke: #9ca3af; }
+        .ring2 { stroke: #6b7280; }
+        .ring3 { stroke: #4b5563; }
+        .letter { fill: #111827; }
+      }
+    </style>
+  </defs>
+  
+  <!-- Anillo exterior -->
+  <circle cx="16" cy="16" r="14" class="ring1" stroke-width="1.5" fill="none" opacity="0.8"/>
+  
+  <!-- Anillo medio -->
+  <circle cx="16" cy="16" r="11" class="ring2" stroke-width="1" fill="none" opacity="0.6"/>
+  
+  <!-- Anillo interior -->
+  <circle cx="16" cy="16" r="8" class="ring3" stroke-width="0.8" fill="none" opacity="0.4"/>
+  
+  <!-- Círculo central -->
+  <circle cx="16" cy="16" r="5" class="background" stroke="#6b7280" stroke-width="0.3"/>
+  
+  <!-- Letra "N" -->
+  <text x="16" y="19" text-anchor="middle" class="letter" font-size="8" font-weight="bold" font-family="Arial, sans-serif">N</text>
+</svg>

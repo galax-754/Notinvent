@@ -5,6 +5,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { LanguageSelector } from '../common/LanguageSelector';
 import { ThemeToggle } from '../common/ThemeToggle';
 import { UserMenu } from './UserMenu';
+import { Logo } from '../common/Logo';
 
 interface HeaderProps {
   currentView: string;
@@ -40,9 +41,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => 
         <div className="flex items-center justify-between h-16">
           {/* Logo and Title */}
           <div className="flex items-center space-x-3 min-w-0 flex-1 sm:flex-none">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-              <Database className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
-            </div>
+            <Logo size="md" className="flex-shrink-0" />
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent truncate">
                 {t('header.title')}
