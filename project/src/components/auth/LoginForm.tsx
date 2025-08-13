@@ -3,8 +3,8 @@ import { Mail, Lock, LogIn } from 'lucide-react';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { ErrorMessage } from '../common/ErrorMessage';
-import { ForgotPasswordForm } from './ForgotPasswordForm';
 import { SimpleResetForm } from './SimpleResetForm';
+import { TempPasswordForm } from './TempPasswordForm';
 import { useAuth } from '../../contexts/AuthContext';
 import { LoginCredentials } from '../../types/auth';
 
@@ -15,8 +15,8 @@ interface LoginFormProps {
 export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const { login, isLoading, error, clearError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showSimpleReset, setShowSimpleReset] = useState(false);
+  const [showTempPassword, setShowTempPassword] = useState(false);
   const [formData, setFormData] = useState<LoginCredentials>({
     email: '',
     password: '',
@@ -78,19 +78,21 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
     console.log('Email de recuperación enviado');
   };
 
-  if (showForgotPassword) {
-    return (
-      <ForgotPasswordForm
-        onBack={() => setShowForgotPassword(false)}
-        onSuccess={handleForgotPasswordSuccess}
-      />
-    );
-  }
+
 
   if (showSimpleReset) {
     return (
       <SimpleResetForm
         onBack={() => setShowSimpleReset(false)}
+        onSuccess={handleForgotPasswordSuccess}
+      />
+    );
+  }
+
+  if (showTempPassword) {
+    return (
+      <TempPasswordForm
+        onBack={() => setShowTempPassword(false)}
         onSuccess={handleForgotPasswordSuccess}
       />
     );
@@ -160,19 +162,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
       </form>
 
       <div className="mt-4 text-center space-y-2">
-        <button
-          onClick={() => setShowForgotPassword(true)}
-          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors duration-200 block"
-          disabled={isLoading}
-        >
-          ¿Olvidaste tu contraseña? (Envío por email)
-        </button>
+
         <button
           onClick={() => setShowSimpleReset(true)}
           className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm font-medium transition-colors duration-200 block"
           disabled={isLoading}
         >
           Restablecer contraseña (Directo)
+        </button>
+        <button
+          onClick={() => setShowTempPassword(true)}
+          className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 text-sm font-medium transition-colors duration-200 block"
+          disabled={isLoading}
+        >
+          Contraseña temporal por email
         </button>
       </div>
 

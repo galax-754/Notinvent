@@ -1,28 +1,33 @@
 import React, { useState } from 'react';
-import { Mail, ArrowLeft, Send } from 'lucide-react';
+import { Mail, Send, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { ErrorMessage } from '../common/ErrorMessage';
 
-interface ForgotPasswordFormProps {
+interface TempPasswordFormProps {
   onBack: () => void;
   onSuccess: () => void;
 }
 
-export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ 
-  onBack, 
-  onSuccess 
+export const TempPasswordForm: React.FC<TempPasswordFormProps> = ({
+  onBack,
+  onSuccess
 }) => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email.trim()) {
-      setError('Por favor ingresa tu email');
+      setError('Por favor ingresa el email');
+      return;
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Por favor ingresa un email válido');
       return;
     }
 
@@ -30,21 +35,23 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     setError(null);
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
+      const response = await fetch('/api/auth/temp-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ 
+          email: email.trim()
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setIsSubmitted(true);
+        setIsSuccess(true);
         onSuccess();
       } else {
-        setError(data.error || 'Error al procesar la solicitud');
+        setError(data.error || 'Error al enviar contraseña temporal');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -54,41 +61,37 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     }
   };
 
-  if (isSubmitted) {
+  if (isSuccess) {
     return (
       <div className="w-full max-w-md mx-auto text-center">
         <div className="mb-6">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Send className="w-8 h-8 text-green-600" />
+            <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            ¡Email enviado!
+            ¡Contraseña temporal enviada!
           </h2>
           <p className="text-gray-600 mb-6">
-            Si existe una cuenta con ese email, hemos enviado un enlace de recuperación.
+            Hemos enviado una contraseña temporal a tu email. 
+            Revisa tu bandeja de entrada y usa esa contraseña para iniciar sesión.
           </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-blue-800 mb-2">Instrucciones:</h3>
+            <ol className="text-sm text-blue-700 text-left space-y-1">
+              <li>1. Revisa tu email y copia la contraseña temporal</li>
+              <li>2. Usa esa contraseña para iniciar sesión</li>
+              <li>3. Una vez dentro, cambia tu contraseña en tu perfil</li>
+            </ol>
+          </div>
         </div>
         
-        <div className="space-y-4">
-          <Button 
-            onClick={onBack}
-            variant="outline"
-            className="w-full"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Volver al login
-          </Button>
-          
-          <p className="text-sm text-gray-500">
-            ¿No recibiste el email? Revisa tu carpeta de spam o{' '}
-            <button
-              onClick={() => setIsSubmitted(false)}
-              className="text-blue-600 hover:text-blue-700 font-medium"
-            >
-              intenta nuevamente
-            </button>
-          </p>
-        </div>
+        <Button 
+          onClick={onBack}
+          className="w-full"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Ir al login
+        </Button>
       </div>
     );
   }
@@ -100,10 +103,10 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
           <Mail className="w-8 h-8 text-blue-600" />
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          ¿Olvidaste tu contraseña?
+          Contraseña temporal
         </h2>
         <p className="text-gray-600">
-          Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña.
+          Ingresa tu email y te enviaremos una contraseña temporal para que puedas acceder a tu cuenta.
         </p>
       </div>
 
@@ -139,7 +142,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
           ) : (
             <>
               <Send className="w-4 h-4 mr-2" />
-              Enviar enlace de recuperación
+              Enviar contraseña temporal
             </>
           )}
         </Button>
