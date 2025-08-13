@@ -91,6 +91,40 @@ export function generateToken(user) {
 }
 
 /**
+ * 🔐 FUNCIÓN PARA GENERAR TOKEN DE RECUPERACIÓN DE CONTRASEÑA
+ * 
+ * Crea un token JWT específico para recuperación de contraseña.
+ * Este token expira en 1 hora por seguridad.
+ * 
+ * @param {Object} user - Objeto del usuario
+ * @param {string} user.id - ID del usuario
+ * @param {string} user.email - Email del usuario
+ * @returns {string} JWT token de recuperación
+ */
+export function generatePasswordResetToken(user) {
+  try {
+    console.log('🔐 Generando token de recuperación para usuario:', user.email);
+    
+    const payload = {
+      userId: user.id || user._id,
+      email: user.email,
+      type: 'password_reset',
+      iat: Math.floor(Date.now() / 1000), // Issued at
+    };
+
+    const token = jwt.sign(payload, JWT_SECRET, {
+      expiresIn: '1h', // Token válido por 1 hora
+    });
+
+    console.log('✅ Token de recuperación generado exitosamente');
+    return token;
+  } catch (error) {
+    console.error('❌ Error generando token de recuperación:', error);
+    throw new Error('Error generando token de recuperación');
+  }
+}
+
+/**
  * 🔍 FUNCIÓN PARA VERIFICAR JWT TOKEN
  * 
  * Verifica y decodifica un JWT token.

@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
   try {
     const authModule = await import('../../lib/auth.js');
-    generateToken = authModule.generateToken;
+    generateToken = authModule.generatePasswordResetToken;
   } catch (error) {
     console.error('❌ Error importando auth:', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
@@ -90,9 +90,8 @@ export default async function handler(req, res) {
     // ✅ PASO 3: Generar token de recuperación
     const resetToken = generateToken({
       id: user.id,
-      email: user.email,
-      type: 'password_reset'
-    }, '1h'); // Token válido por 1 hora
+      email: user.email
+    }); // Token válido por 1 hora (configurado en la función)
 
     // ✅ PASO 4: Guardar token en la base de datos
     const { db } = await connectToDatabase();
