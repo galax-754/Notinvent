@@ -82,8 +82,11 @@ export default async function handler(req, res) {
     // Actualizar contraseña en la base de datos
     const { db } = await connectToDatabase();
     
+    // Usar el ID convertido a ObjectId
+    const ObjectId = (await import('mongodb')).ObjectId;
+    
     await db.collection('users').updateOne(
-      { _id: user._id },
+      { _id: new ObjectId(user.id) },
       { 
         $set: { 
           password: hashedPassword,
