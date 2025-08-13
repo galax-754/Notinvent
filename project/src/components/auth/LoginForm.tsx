@@ -4,6 +4,7 @@ import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { ErrorMessage } from '../common/ErrorMessage';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
+import { SimpleResetForm } from './SimpleResetForm';
 import { useAuth } from '../../contexts/AuthContext';
 import { LoginCredentials } from '../../types/auth';
 
@@ -15,6 +16,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const { login, isLoading, error, clearError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showSimpleReset, setShowSimpleReset] = useState(false);
   const [formData, setFormData] = useState<LoginCredentials>({
     email: '',
     password: '',
@@ -85,6 +87,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
     );
   }
 
+  if (showSimpleReset) {
+    return (
+      <SimpleResetForm
+        onBack={() => setShowSimpleReset(false)}
+        onSuccess={handleForgotPasswordSuccess}
+      />
+    );
+  }
+
   return (
     <div className="w-full max-w-md mx-auto">
       <div className="text-center mb-8">
@@ -148,13 +159,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
         </Button>
       </form>
 
-      <div className="mt-4 text-center">
+      <div className="mt-4 text-center space-y-2">
         <button
           onClick={() => setShowForgotPassword(true)}
-          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors duration-200"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors duration-200 block"
           disabled={isLoading}
         >
-          ¿Olvidaste tu contraseña?
+          ¿Olvidaste tu contraseña? (Envío por email)
+        </button>
+        <button
+          onClick={() => setShowSimpleReset(true)}
+          className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm font-medium transition-colors duration-200 block"
+          disabled={isLoading}
+        >
+          Restablecer contraseña (Directo)
         </button>
       </div>
 
