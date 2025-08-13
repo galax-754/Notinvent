@@ -8,7 +8,8 @@ import { useNotion } from '../../contexts/NotionContext';
 import { getArticuloNombreYNumero } from './ConfigurationView';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HelpTooltip } from '../common/HelpTooltip';
-import { Html5QrcodeScanner, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+// @ts-ignore
+import Quagga from 'quagga';
 import toast from 'react-hot-toast';
 
 export const ScanView: React.FC = () => {
@@ -23,7 +24,7 @@ export const ScanView: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastScannedCode, setLastScannedCode] = useState(''); // Para prevenir escaneos duplicados
   const [scanCooldown, setScanCooldown] = useState(false); // Cooldown para prevenir escaneos múltiples
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const [isScannerReady, setIsScannerReady] = useState(false); // Para controlar el botón "Escanear Ya"
   const inputRef = useRef<HTMLInputElement>(null);
   const scanCooldownRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -34,9 +35,9 @@ export const ScanView: React.FC = () => {
   }, [scanMode]);
 
   useEffect(() => {
-    if (scanMode === 'camera' && !scannerRef.current) {
+    if (scanMode === 'camera') {
       initializeScanner();
-    } else if (scanMode === 'manual' && scannerRef.current) {
+    } else {
       cleanupScanner();
     }
     return () => {
@@ -56,42 +57,52 @@ export const ScanView: React.FC = () => {
   }, []);
 
   const initializeScanner = () => {
-    const scanner = new Html5QrcodeScanner(
-      'qr-reader',
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-        showTorchButtonIfSupported: true,
-        disableFlip: false,
-        rememberLastUsedCamera: true,
-        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-        showZoomSliderIfSupported: true,
-        defaultZoomValueIfSupported: 2,
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.QR_CODE,
-          Html5QrcodeSupportedFormats.AZTEC,
-          Html5QrcodeSupportedFormats.CODABAR,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.CODE_93,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.DATA_MATRIX,
-          Html5QrcodeSupportedFormats.MAXICODE,
-          Html5QrcodeSupportedFormats.ITF,
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.PDF_417,
-          Html5QrcodeSupportedFormats.RSS_14,
-          Html5QrcodeSupportedFormats.RSS_EXPANDED,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E
+    Quagga.init({
+      inputStream: {
+        name: "Live",
+        type: "LiveStream",
+        target: "#qr-reader",
+        constraints: {
+          width: 640,
+          height: 480,
+          facingMode: "environment"
+        },
+      },
+      locator: {
+        patchSize: "medium",
+        halfSample: true
+      },
+      numOfWorkers: 2,
+      frequency: 10,
+      decoder: {
+        readers: [
+          "code_128_reader",
+          "ean_reader",
+          "ean_8_reader",
+          "code_39_reader",
+          "code_39_vin_reader",
+          "codabar_reader",
+          "upc_reader",
+          "upc_e_reader",
+          "i2of5_reader"
         ]
       },
-      false
-    );
-
-    scanner.render(
-      (decodedText) => {
+      locate: true
+    }, (err) => {
+      if (err) {
+        console.error('Error initializing Quagga:', err);
+        toast.error('Error al inicializar la cámara');
+        return;
+      }
+      
+      console.log('Quagga initialized successfully');
+      setIsScannerReady(true);
+      setIsScanning(true);
+      
+      // Configurar el detector de códigos
+      Quagga.onDetected((result) => {
+        const code = result.codeResult.code;
+        
         // Verificar si ya estamos procesando o en cooldown
         if (isProcessing || scanCooldown) {
           console.log('Scan ignored - processing or cooldown active');
@@ -99,14 +110,14 @@ export const ScanView: React.FC = () => {
         }
 
         // Verificar si es el mismo código que se escaneó recientemente
-        if (decodedText === lastScannedCode) {
+        if (code === lastScannedCode) {
           console.log('Scan ignored - duplicate code');
           return;
         }
 
         // Activar cooldown para prevenir escaneos múltiples
         setScanCooldown(true);
-        setLastScannedCode(decodedText);
+        setLastScannedCode(code);
         
         // Configurar cooldown de 2 segundos
         if (scanCooldownRef.current) {
@@ -117,29 +128,29 @@ export const ScanView: React.FC = () => {
           setLastScannedCode('');
         }, 2000);
 
-        handleScan(decodedText);
-      },
-      (error) => {
-        // Solo mostrar errores importantes, no errores de decodificación normales
-        if (typeof error === 'object' && error !== null && 'name' in error) {
-          const errorName = (error as any).name;
-          if (errorName !== 'NotFoundException' && errorName !== 'NoQRCodeFoundException') {
-            console.warn('Scanner error:', error);
-          }
-        }
-      }
-    );
+        handleScan(code);
+      });
+    });
+  };
 
-    scannerRef.current = scanner;
-    setIsScanning(true);
+  const startScanning = () => {
+    if (isScannerReady) {
+      Quagga.start();
+      setIsScanning(true);
+    }
+  };
+
+  const stopScanning = () => {
+    Quagga.stop();
+    setIsScanning(false);
   };
 
   const cleanupScanner = () => {
-    if (scannerRef.current) {
-      scannerRef.current.clear();
-      scannerRef.current = null;
-      setIsScanning(false);
-    }
+    Quagga.stop();
+    Quagga.offDetected();
+    setIsScanning(false);
+    setIsScannerReady(false);
+    
     // Limpiar cooldown al cambiar de modo
     setScanCooldown(false);
     setLastScannedCode('');
@@ -1172,8 +1183,45 @@ export const ScanView: React.FC = () => {
               <div className="space-y-4">
                 <div id="qr-reader" className="w-full max-w-md mx-auto"></div>
                 
+                {/* Botón de control del escáner */}
+                <div className="flex justify-center space-x-3">
+                  {isScannerReady && !isScanning && (
+                    <button
+                      onClick={startScanning}
+                      className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>{t('scan.scanNow')}</span>
+                    </button>
+                  )}
+                  
+                  {isScanning && (
+                    <button
+                      onClick={stopScanning}
+                      className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>{t('scan.stopScanning')}</span>
+                    </button>
+                  )}
+                </div>
+                
                 {/* Indicadores de estado del escáner */}
                 <div className="text-center space-y-2">
+                  {!isScannerReady && (
+                    <div className="inline-flex items-center space-x-2 text-yellow-600 dark:text-yellow-200">
+                      <div className="w-4 h-4 border-2 border-yellow-600/30 border-t-yellow-600 dark:border-yellow-800/30 dark:border-t-yellow-800 rounded-full animate-spin"></div>
+                      <span className="text-sm font-medium">{t('scan.initializingCamera')}</span>
+                    </div>
+                  )}
+                  
+                  {isScannerReady && !isScanning && (
+                    <div className="inline-flex items-center space-x-2 text-blue-600 dark:text-blue-200">
+                      <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 dark:border-blue-800/30 dark:border-t-blue-800 rounded-full"></div>
+                      <span className="text-sm font-medium">{t('scan.cameraReady')}</span>
+                    </div>
+                  )}
+                  
                   {isScanning && !scanCooldown && (
                     <div className="inline-flex items-center space-x-2 text-blue-600 dark:text-blue-200">
                       <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 dark:border-blue-800/30 dark:border-t-blue-800 rounded-full animate-spin"></div>

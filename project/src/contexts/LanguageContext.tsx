@@ -130,6 +130,10 @@ const translations = {
     'scan.tipStable': 'Mantén el código de barras estable y bien iluminado',
     'scan.tipProtection': 'El escáner tiene protección contra escaneos múltiples',
     'scan.tipCooldown': 'Espera 2 segundos entre escaneos del mismo código',
+    'scan.initializingCamera': 'Inicializando cámara...',
+    'scan.cameraReady': 'Cámara lista - Haz clic en "Escanear Ya"',
+    'scan.scanNow': 'Escanear Ya',
+    'scan.stopScanning': 'Detener Escaneo',
     
     // Configuration View
     'config.title': 'Configuraciones de Escaneo',
@@ -368,6 +372,10 @@ const translations = {
     'scan.tipStable': 'Keep the barcode stable and well-lit',
     'scan.tipProtection': 'Scanner has protection against multiple scans',
     'scan.tipCooldown': 'Wait 2 seconds between scans of the same code',
+    'scan.initializingCamera': 'Initializing camera...',
+    'scan.cameraReady': 'Camera ready - Click "Scan Now"',
+    'scan.scanNow': 'Scan Now',
+    'scan.stopScanning': 'Stop Scanning',
     
     // Configuration View
     'config.title': 'Scan Configurations',
