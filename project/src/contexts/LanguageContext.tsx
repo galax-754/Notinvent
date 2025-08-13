@@ -123,6 +123,12 @@ const translations = {
     'scan.noItemFound': 'No se encontró ningún artículo con el código:',
     'scan.readyToScan': 'Listo para Escanear',
     'scan.scanToStart': 'Escanea o ingresa un código de barras para comenzar',
+    'scan.autoSearch': 'Búsqueda Automática',
+    'scan.autoSearchEnabled': 'La búsqueda se ejecutará automáticamente después de escanear',
+    'scan.autoSearchDisabled': 'Hacer clic en el botón de buscar para realizar la búsqueda',
+    'scan.autoSearchTooltip': 'Cuando está activado, la búsqueda se ejecuta automáticamente después de escanear un código de barras. Cuando está desactivado, debes hacer clic en el botón de buscar.',
+    'scan.backupButton': 'Búsqueda automática activada - el botón está disponible como respaldo',
+    'scan.clickToSearch': 'Hacer clic para buscar',
     
     // Configuration View
     'config.title': 'Configuraciones de Escaneo',

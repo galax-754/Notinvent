@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Scan, Camera, Keyboard, Search, CheckCircle, AlertCircle, RefreshCw, 
   Package, Hash, Shield, MapPin, Calendar, CalendarClock, DollarSign, 
-  Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone 
+  Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone, Zap 
 } from 'lucide-react';
 import { useNotion } from '../../contexts/NotionContext';
 import { getArticuloNombreYNumero } from './ConfigurationView';
@@ -21,8 +21,11 @@ export const ScanView: React.FC = () => {
   const [selectedConfig, setSelectedConfig] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [autoSearch, setAutoSearch] = useState(true); // Nuevo estado para búsqueda automática
+  const [lastInputTime, setLastInputTime] = useState(0); // Para detectar cuando se ha terminado de escribir
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const autoSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (scanMode === 'manual' && inputRef.current) {
@@ -40,6 +43,41 @@ export const ScanView: React.FC = () => {
       cleanupScanner();
     };
   }, [scanMode]);
+
+  // Nuevo useEffect para manejar la búsqueda automática
+  useEffect(() => {
+    if (autoSearch && scannedCode.trim() && !isProcessing) {
+      // Limpiar el timeout anterior si existe
+      if (autoSearchTimeoutRef.current) {
+        clearTimeout(autoSearchTimeoutRef.current);
+      }
+
+      // Configurar un nuevo timeout para la búsqueda automática
+      autoSearchTimeoutRef.current = setTimeout(() => {
+        const timeSinceLastInput = Date.now() - lastInputTime;
+        // Si han pasado más de 300ms desde el último input, realizar la búsqueda
+        // Esto es más rápido para escáneres de códigos de barras
+        if (timeSinceLastInput >= 300) {
+          handleScan(scannedCode.trim());
+        }
+      }, 300);
+    }
+
+    return () => {
+      if (autoSearchTimeoutRef.current) {
+        clearTimeout(autoSearchTimeoutRef.current);
+      }
+    };
+  }, [scannedCode, autoSearch, lastInputTime, isProcessing]);
+
+  // Limpiar el timeout cuando el componente se desmonte
+  useEffect(() => {
+    return () => {
+      if (autoSearchTimeoutRef.current) {
+        clearTimeout(autoSearchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const initializeScanner = () => {
     const scanner = new Html5QrcodeScanner(
@@ -310,6 +348,7 @@ export const ScanView: React.FC = () => {
         });
         setScannedCode('');
         setCurrentItem(null);
+        // Enfocar el input para el siguiente escaneo
         if (scanMode === 'manual' && inputRef.current) {
           inputRef.current.focus();
         }
@@ -378,7 +417,7 @@ export const ScanView: React.FC = () => {
 
   const getIconComponent = (iconName: string) => {
     const icons: Record<string, any> = {
-      Package, Hash, Shield, MapPin, Calendar, CalendarClock, DollarSign, Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone
+      Package, Hash, Shield, MapPin, Calendar, CalendarClock, DollarSign, Mail, ExternalLink, Tag, Tags, Type, Info, CheckSquare, Phone, Zap
     };
     return icons[iconName] || Info;
   };
@@ -1017,38 +1056,101 @@ export const ScanView: React.FC = () => {
               <HelpTooltip content={scanMode === 'manual' ? t('help.scan.manualEntry') : t('help.scan.cameraScan')} />
             </div>
             {scanMode === 'manual' ? (
-              <form onSubmit={handleManualScan} className="space-y-4">
-                <div>
-                  <div className="flex items-center space-x-2 mb-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                      {t('scan.enterBarcode')}
-                    </label>
-                    <HelpTooltip content={t('help.scan.enterBarcode')} />
+              <div className="space-y-4">
+                {/* Toggle para búsqueda automática */}
+                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <div className="flex items-center space-x-2">
+                    <Zap className={`w-4 h-4 ${autoSearch ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                      {t('scan.autoSearch')}
+                    </span>
+                    <HelpTooltip content={t('scan.autoSearchTooltip')} />
                   </div>
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={scannedCode}
-                      onChange={(e) => setScannedCode(e.target.value)}
-                      className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-700 rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 transition-all duration-200 text-sm sm:text-base"
-                      placeholder={t('scan.barcodePlaceholder')}
-                      disabled={isProcessing}
+                  <button
+                    onClick={() => setAutoSearch(!autoSearch)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                      autoSearch ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        autoSearch ? 'translate-x-6' : 'translate-x-1'
+                      }`}
                     />
-                    <button
-                      type="submit"
-                      disabled={isProcessing || !scannedCode.trim()}
-                      className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-500 text-white rounded-lg lg:rounded-xl hover:bg-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                    >
-                      {isProcessing ? (
-                        <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
-                      ) : (
-                        <Search className="w-4 h-4 sm:w-5 sm:h-5" />
-                      )}
-                    </button>
-                  </div>
+                  </button>
                 </div>
-              </form>
+
+                <form onSubmit={handleManualScan} className="space-y-4">
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                        {t('scan.enterBarcode')}
+                      </label>
+                      <HelpTooltip content={t('help.scan.enterBarcode')} />
+                    </div>
+                    <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                      <div className="flex-1 relative">
+                        <input
+                          ref={inputRef}
+                          type="text"
+                          value={scannedCode}
+                          onChange={(e) => {
+                            setScannedCode(e.target.value);
+                            setLastInputTime(Date.now()); // Actualizar el tiempo del último input
+                          }}
+                          onKeyDown={(e) => {
+                            // Si se presiona Enter, realizar búsqueda inmediata
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (scannedCode.trim()) {
+                                // Limpiar el timeout automático si existe
+                                if (autoSearchTimeoutRef.current) {
+                                  clearTimeout(autoSearchTimeoutRef.current);
+                                }
+                                handleScan(scannedCode.trim());
+                              }
+                            }
+                          }}
+                          className={`w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 transition-all duration-200 text-sm sm:text-base ${
+                            autoSearch 
+                              ? 'border-blue-300 dark:border-blue-600 focus:ring-blue-500' 
+                              : 'border-gray-300 dark:border-gray-700 focus:ring-blue-500'
+                          }`}
+                          placeholder={t('scan.barcodePlaceholder')}
+                          disabled={isProcessing}
+                        />
+                        {autoSearch && scannedCode.trim() && (
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={isProcessing || !scannedCode.trim()}
+                        className={`px-4 sm:px-6 py-2 sm:py-3 text-white rounded-lg lg:rounded-xl hover:focus:ring-2 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center ${
+                          autoSearch 
+                            ? 'bg-gray-500 hover:bg-gray-600 focus:ring-gray-500' 
+                            : 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500'
+                        }`}
+                        title={autoSearch ? t('scan.backupButton') : t('scan.clickToSearch')}
+                      >
+                        {isProcessing ? (
+                          <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                        ) : (
+                          <Search className="w-4 h-4 sm:w-5 sm:h-5" />
+                        )}
+                      </button>
+                    </div>
+                    {autoSearch && (
+                      <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 flex items-center space-x-1">
+                        <Zap className="w-3 h-3" />
+                        <span>{t('scan.autoSearchEnabled')}</span>
+                      </div>
+                    )}
+                  </div>
+                </form>
+              </div>
             ) : (
               <div className="space-y-4">
                 <div id="qr-reader" className="w-full max-w-md mx-auto"></div>
