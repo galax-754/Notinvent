@@ -3,6 +3,7 @@ import { Mail, Lock, LogIn } from 'lucide-react';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { ErrorMessage } from '../common/ErrorMessage';
+import { ForgotPasswordForm } from './ForgotPasswordForm';
 import { useAuth } from '../../contexts/AuthContext';
 import { LoginCredentials } from '../../types/auth';
 
@@ -13,6 +14,7 @@ interface LoginFormProps {
 export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const { login, isLoading, error, clearError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [formData, setFormData] = useState<LoginCredentials>({
     email: '',
     password: '',
@@ -68,6 +70,20 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
       clearError();
     }
   };
+
+  const handleForgotPasswordSuccess = () => {
+    // Mostrar mensaje de éxito o redirigir
+    console.log('Email de recuperación enviado');
+  };
+
+  if (showForgotPassword) {
+    return (
+      <ForgotPasswordForm
+        onBack={() => setShowForgotPassword(false)}
+        onSuccess={handleForgotPasswordSuccess}
+      />
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -131,6 +147,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
           Iniciar Sesión
         </Button>
       </form>
+
+      <div className="mt-4 text-center">
+        <button
+          onClick={() => setShowForgotPassword(true)}
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium transition-colors duration-200"
+          disabled={isLoading}
+        >
+          ¿Olvidaste tu contraseña?
+        </button>
+      </div>
 
       <div className="mt-8 text-center">
         <p className="text-gray-600 dark:text-gray-400">
