@@ -7,11 +7,41 @@
  * 3. Envía un email con el enlace de recuperación
  */
 
-import { findUserByEmail } from '../../lib/userService.js';
-import { generateToken } from '../../lib/auth.js';
-import { emailService } from '../../lib/emailService.js';
-
 export default async function handler(req, res) {
+  // Importaciones dinámicas para evitar problemas de rutas en Vercel
+  let findUserByEmail, generateToken, emailService, connectToDatabase;
+
+  try {
+    const userServiceModule = await import('../../lib/userService.js');
+    findUserByEmail = userServiceModule.findUserByEmail;
+  } catch (error) {
+    console.error('❌ Error importando userService:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+
+  try {
+    const authModule = await import('../../lib/auth.js');
+    generateToken = authModule.generateToken;
+  } catch (error) {
+    console.error('❌ Error importando auth:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+
+  try {
+    const emailServiceModule = await import('../../lib/emailService.js');
+    emailService = emailServiceModule.emailService;
+  } catch (error) {
+    console.error('❌ Error importando emailService:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+
+  try {
+    const mongodbModule = await import('../../lib/mongodb.js');
+    connectToDatabase = mongodbModule.connectToDatabase;
+  } catch (error) {
+    console.error('❌ Error importando mongodb:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
   // ✅ CONFIGURAR CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -65,7 +95,6 @@ export default async function handler(req, res) {
     }, '1h'); // Token válido por 1 hora
 
     // ✅ PASO 4: Guardar token en la base de datos
-    const { connectToDatabase } = await import('../../lib/mongodb.js');
     const { db } = await connectToDatabase();
     
     await db.collection('users').updateOne(

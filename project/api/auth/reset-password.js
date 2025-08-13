@@ -7,10 +7,26 @@
  * 3. Actualiza la contraseña del usuario
  */
 
-import { verifyToken } from '../../lib/auth.js';
-import { hashPassword } from '../../lib/auth.js';
-
 export default async function handler(req, res) {
+  // Importaciones dinámicas para evitar problemas de rutas en Vercel
+  let verifyToken, hashPassword, connectToDatabase;
+
+  try {
+    const authModule = await import('../../lib/auth.js');
+    verifyToken = authModule.verifyToken;
+    hashPassword = authModule.hashPassword;
+  } catch (error) {
+    console.error('❌ Error importando auth:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+
+  try {
+    const mongodbModule = await import('../../lib/mongodb.js');
+    connectToDatabase = mongodbModule.connectToDatabase;
+  } catch (error) {
+    console.error('❌ Error importando mongodb:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
   // ✅ CONFIGURAR CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -62,7 +78,6 @@ export default async function handler(req, res) {
     }
 
     // ✅ PASO 3: Conectar a la base de datos
-    const { connectToDatabase } = await import('../../lib/mongodb.js');
     const { db } = await connectToDatabase();
 
     // ✅ PASO 4: Verificar que el usuario existe y el token no ha expirado
