@@ -1,0 +1,76 @@
+# ========================================
+# CONFIGURACIÓN DE VARIABLES DE ENTORNO
+# ========================================
+
+# Copia este archivo a .env.local y completa las variables
+
+# ========================================
+# CONFIGURACIÓN DE MONGODB
+# ========================================
+MONGODB_URI=mongodb+srv://tu_usuario:tu_contraseña@tu_cluster.mongodb.net/tu_base_de_datos
+MONGODB_DB=notion_inventory
+
+# ========================================
+# CONFIGURACIÓN DE JWT
+# ========================================
+JWT_SECRET=tu_jwt_secret_super_seguro_y_largo
+JWT_REFRESH_SECRET=tu_jwt_refresh_secret_super_seguro_y_largo
+
+# ========================================
+# CONFIGURACIÓN DE EMAIL (OPCIONAL)
+# ========================================
+# Para habilitar recuperación de contraseña, configura estas variables:
+
+# Host del servidor SMTP (ejemplo para Gmail)
+SMTP_HOST=smtp.gmail.com
+
+# Puerto del servidor SMTP
+SMTP_PORT=587
+
+# Email desde el cual se enviarán los correos
+# IMPORTANTE: Este NO es tu email personal, es el email que configuraste en Gmail
+SMTP_USER=tu_email_de_aplicacion@gmail.com
+
+# Contraseña de aplicación de Gmail
+# IMPORTANTE: NO uses tu contraseña normal de Gmail
+# Usa una "Contraseña de aplicación" generada en la configuración de Gmail
+SMTP_PASS=tu_contraseña_de_aplicacion
+
+# URL de tu aplicación (para los enlaces en los emails)
+NEXT_PUBLIC_APP_URL=https://tu-app.vercel.app
+
+# ========================================
+# CONFIGURACIÓN DE NOTION (OPCIONAL)
+# ========================================
+NOTION_API_KEY=tu_notion_api_key
+NOTION_DATABASE_ID=tu_notion_database_id
+
+# ========================================
+# NOTAS IMPORTANTES
+# ========================================
+
+# 1. MONGODB_URI: Obtén esta URL desde MongoDB Atlas
+# 2. JWT_SECRET: Genera una cadena aleatoria larga y segura
+# 3. SMTP_USER: Configura un email específico para la aplicación
+# 4. SMTP_PASS: Usa contraseñas de aplicación, no tu contraseña normal
+# 5. NEXT_PUBLIC_APP_URL: URL de tu aplicación desplegada
+
+# ========================================
+# CONFIGURACIÓN EN VERCEL
+# ========================================
+
+# Para desplegar en Vercel, agrega estas variables en:
+# Dashboard de Vercel > Tu Proyecto > Settings > Environment Variables
+
+# Variables obligatorias:
+# - MONGODB_URI
+# - MONGODB_DB  
+# - JWT_SECRET
+# - JWT_REFRESH_SECRET
+
+# Variables opcionales (para email):
+# - SMTP_HOST
+# - SMTP_PORT
+# - SMTP_USER
+# - SMTP_PASS
+# - NEXT_PUBLIC_APP_URL
