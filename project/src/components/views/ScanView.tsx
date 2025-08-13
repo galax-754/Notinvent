@@ -8,7 +8,7 @@ import { useNotion } from '../../contexts/NotionContext';
 import { getArticuloNombreYNumero } from './ConfigurationView';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { HelpTooltip } from '../common/HelpTooltip';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import toast from 'react-hot-toast';
 
 export const ScanView: React.FC = () => {
@@ -21,11 +21,11 @@ export const ScanView: React.FC = () => {
   const [selectedConfig, setSelectedConfig] = useState<string>('');
   const [isScanning, setIsScanning] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [autoSearch, setAutoSearch] = useState(true); // Nuevo estado para búsqueda automática
-  const [lastInputTime, setLastInputTime] = useState(0); // Para detectar cuando se ha terminado de escribir
+  const [lastScannedCode, setLastScannedCode] = useState(''); // Para prevenir escaneos duplicados
+  const [scanCooldown, setScanCooldown] = useState(false); // Cooldown para prevenir escaneos múltiples
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const autoSearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scanCooldownRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (scanMode === 'manual' && inputRef.current) {
@@ -44,37 +44,13 @@ export const ScanView: React.FC = () => {
     };
   }, [scanMode]);
 
-  // Nuevo useEffect para manejar la búsqueda automática
-  useEffect(() => {
-    if (autoSearch && scannedCode.trim() && !isProcessing) {
-      // Limpiar el timeout anterior si existe
-      if (autoSearchTimeoutRef.current) {
-        clearTimeout(autoSearchTimeoutRef.current);
-      }
 
-      // Configurar un nuevo timeout para la búsqueda automática
-      autoSearchTimeoutRef.current = setTimeout(() => {
-        const timeSinceLastInput = Date.now() - lastInputTime;
-        // Si han pasado más de 300ms desde el último input, realizar la búsqueda
-        // Esto es más rápido para escáneres de códigos de barras
-        if (timeSinceLastInput >= 300) {
-          handleScan(scannedCode.trim());
-        }
-      }, 300);
-    }
 
-    return () => {
-      if (autoSearchTimeoutRef.current) {
-        clearTimeout(autoSearchTimeoutRef.current);
-      }
-    };
-  }, [scannedCode, autoSearch, lastInputTime, isProcessing]);
-
-  // Limpiar el timeout cuando el componente se desmonte
+  // Limpiar los timeouts cuando el componente se desmonte
   useEffect(() => {
     return () => {
-      if (autoSearchTimeoutRef.current) {
-        clearTimeout(autoSearchTimeoutRef.current);
+      if (scanCooldownRef.current) {
+        clearTimeout(scanCooldownRef.current);
       }
     };
   }, []);
@@ -87,18 +63,70 @@ export const ScanView: React.FC = () => {
         qrbox: { width: 250, height: 250 },
         aspectRatio: 1.0,
         showTorchButtonIfSupported: true,
+        disableFlip: false,
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+        showZoomSliderIfSupported: true,
+        defaultZoomValueIfSupported: 2,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.AZTEC,
+          Html5QrcodeSupportedFormats.CODABAR,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.DATA_MATRIX,
+          Html5QrcodeSupportedFormats.MAXICODE,
+          Html5QrcodeSupportedFormats.ITF,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.PDF_417,
+          Html5QrcodeSupportedFormats.RSS_14,
+          Html5QrcodeSupportedFormats.RSS_EXPANDED,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E
+        ]
       },
       false
     );
 
     scanner.render(
       (decodedText) => {
+        // Verificar si ya estamos procesando o en cooldown
+        if (isProcessing || scanCooldown) {
+          console.log('Scan ignored - processing or cooldown active');
+          return;
+        }
+
+        // Verificar si es el mismo código que se escaneó recientemente
+        if (decodedText === lastScannedCode) {
+          console.log('Scan ignored - duplicate code');
+          return;
+        }
+
+        // Activar cooldown para prevenir escaneos múltiples
+        setScanCooldown(true);
+        setLastScannedCode(decodedText);
+        
+        // Configurar cooldown de 2 segundos
+        if (scanCooldownRef.current) {
+          clearTimeout(scanCooldownRef.current);
+        }
+        scanCooldownRef.current = setTimeout(() => {
+          setScanCooldown(false);
+          setLastScannedCode('');
+        }, 2000);
+
         handleScan(decodedText);
-        setIsScanning(false);
       },
       (error) => {
-        // Handle scan errors quietly
-        console.warn('Scan error:', error);
+        // Solo mostrar errores importantes, no errores de decodificación normales
+        if (typeof error === 'object' && error !== null && 'name' in error) {
+          const errorName = (error as any).name;
+          if (errorName !== 'NotFoundException' && errorName !== 'NoQRCodeFoundException') {
+            console.warn('Scanner error:', error);
+          }
+        }
       }
     );
 
@@ -111,6 +139,12 @@ export const ScanView: React.FC = () => {
       scannerRef.current.clear();
       scannerRef.current = null;
       setIsScanning(false);
+    }
+    // Limpiar cooldown al cambiar de modo
+    setScanCooldown(false);
+    setLastScannedCode('');
+    if (scanCooldownRef.current) {
+      clearTimeout(scanCooldownRef.current);
     }
   };
 
@@ -221,12 +255,27 @@ export const ScanView: React.FC = () => {
 
   const handleScan = async (code: string) => {
     if (!code.trim()) return;
+    
+    // Verificar si ya estamos procesando
+    if (isProcessing) {
+      console.log('Scan ignored - already processing');
+      return;
+    }
+
+    // Verificar si es el mismo código que se procesó recientemente
+    if (code === lastScannedCode && scanCooldown) {
+      console.log('Scan ignored - duplicate code in cooldown');
+      return;
+    }
+
     setScannedCode(code);
     setIsProcessing(true);
+    
     try {
       let item = null;
       const config = scanConfigurations.find(c => c.id === selectedConfig);
       const searchField = config?.searchField;
+      
       if (searchField) {
         item = await searchItem(code, searchField);
       } else {
@@ -238,23 +287,38 @@ export const ScanView: React.FC = () => {
           }
         }
       }
+      
       if (item) {
         setCurrentItem(item);
         const itemName = safeStringValue(item.properties['Name'] || item.properties['ID'] || item.properties['Nombre']);
-        toast.success(`${t('toast.itemFound')} ${itemName}`);
+        
+        // Mostrar notificación de éxito solo si no estamos en cooldown
+        if (!scanCooldown) {
+          toast.success(`${t('toast.itemFound')} ${itemName}`);
+        }
+        
         if (config && config.autoSave) {
-          toast(t('scan.autoSaveApplied'), { icon: '⚡' });
+          // Mostrar notificación de auto-guardado solo si no estamos en cooldown
+          if (!scanCooldown) {
+            toast(t('scan.autoSaveApplied'), { icon: '⚡' });
+          }
           setTimeout(() => {
             handleApplyConfiguration(item);
           }, 0);
         }
       } else {
         setCurrentItem(null);
-        toast.error(t('toast.itemNotFound'));
+        // Mostrar error solo si no estamos en cooldown
+        if (!scanCooldown) {
+          toast.error(t('toast.itemNotFound'));
+        }
       }
     } catch (error) {
       console.error('Scan processing error:', error);
-      toast.error(t('toast.scanError'));
+      // Mostrar error solo si no estamos en cooldown
+      if (!scanCooldown) {
+        toast.error(t('toast.scanError'));
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -1057,29 +1121,6 @@ export const ScanView: React.FC = () => {
             </div>
             {scanMode === 'manual' ? (
               <div className="space-y-4">
-                {/* Toggle para búsqueda automática */}
-                <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                  <div className="flex items-center space-x-2">
-                    <Zap className={`w-4 h-4 ${autoSearch ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'}`} />
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                      {t('scan.autoSearch')}
-                    </span>
-                    <HelpTooltip content={t('scan.autoSearchTooltip')} />
-                  </div>
-                  <button
-                    onClick={() => setAutoSearch(!autoSearch)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                      autoSearch ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        autoSearch ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-
                 <form onSubmit={handleManualScan} className="space-y-4">
                   <div>
                     <div className="flex items-center space-x-2 mb-2">
@@ -1096,44 +1137,26 @@ export const ScanView: React.FC = () => {
                           value={scannedCode}
                           onChange={(e) => {
                             setScannedCode(e.target.value);
-                            setLastInputTime(Date.now()); // Actualizar el tiempo del último input
                           }}
                           onKeyDown={(e) => {
                             // Si se presiona Enter, realizar búsqueda inmediata
                             if (e.key === 'Enter') {
                               e.preventDefault();
                               if (scannedCode.trim()) {
-                                // Limpiar el timeout automático si existe
-                                if (autoSearchTimeoutRef.current) {
-                                  clearTimeout(autoSearchTimeoutRef.current);
-                                }
                                 handleScan(scannedCode.trim());
                               }
                             }
                           }}
-                          className={`w-full px-3 sm:px-4 py-2 sm:py-3 border rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 transition-all duration-200 text-sm sm:text-base ${
-                            autoSearch 
-                              ? 'border-blue-300 dark:border-blue-600 focus:ring-blue-500' 
-                              : 'border-gray-300 dark:border-gray-700 focus:ring-blue-500'
-                          }`}
+                          className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 dark:border-gray-700 rounded-lg lg:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/50 dark:bg-gray-800/80 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-300 transition-all duration-200 text-sm sm:text-base"
                           placeholder={t('scan.barcodePlaceholder')}
                           disabled={isProcessing}
                         />
-                        {autoSearch && scannedCode.trim() && (
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                          </div>
-                        )}
                       </div>
                       <button
                         type="submit"
                         disabled={isProcessing || !scannedCode.trim()}
-                        className={`px-4 sm:px-6 py-2 sm:py-3 text-white rounded-lg lg:rounded-xl hover:focus:ring-2 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center ${
-                          autoSearch 
-                            ? 'bg-gray-500 hover:bg-gray-600 focus:ring-gray-500' 
-                            : 'bg-blue-500 hover:bg-blue-600 focus:ring-blue-500'
-                        }`}
-                        title={autoSearch ? t('scan.backupButton') : t('scan.clickToSearch')}
+                        className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg lg:rounded-xl hover:focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        title={t('scan.clickToSearch')}
                       >
                         {isProcessing ? (
                           <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
@@ -1142,26 +1165,48 @@ export const ScanView: React.FC = () => {
                         )}
                       </button>
                     </div>
-                    {autoSearch && (
-                      <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 flex items-center space-x-1">
-                        <Zap className="w-3 h-3" />
-                        <span>{t('scan.autoSearchEnabled')}</span>
-                      </div>
-                    )}
                   </div>
                 </form>
               </div>
             ) : (
               <div className="space-y-4">
                 <div id="qr-reader" className="w-full max-w-md mx-auto"></div>
-                {isScanning && (
-                  <div className="text-center">
+                
+                {/* Indicadores de estado del escáner */}
+                <div className="text-center space-y-2">
+                  {isScanning && !scanCooldown && (
                     <div className="inline-flex items-center space-x-2 text-blue-600 dark:text-blue-200">
                       <div className="w-4 h-4 border-2 border-blue-600/30 border-t-blue-600 dark:border-blue-800/30 dark:border-t-blue-800 rounded-full animate-spin"></div>
                       <span className="text-sm font-medium">{t('scan.scannerActive')}</span>
                     </div>
+                  )}
+                  
+                  {scanCooldown && (
+                    <div className="inline-flex items-center space-x-2 text-orange-600 dark:text-orange-200">
+                      <div className="w-4 h-4 border-2 border-orange-600/30 border-t-orange-600 dark:border-orange-800/30 dark:border-t-orange-800 rounded-full animate-spin"></div>
+                      <span className="text-sm font-medium">{t('scan.scannerCooldown')}</span>
+                    </div>
+                  )}
+                  
+                  {isProcessing && (
+                    <div className="inline-flex items-center space-x-2 text-green-600 dark:text-green-200">
+                      <div className="w-4 h-4 border-2 border-green-600/30 border-t-green-600 dark:border-green-800/30 dark:border-t-green-800 rounded-full animate-spin"></div>
+                      <span className="text-sm font-medium">{t('scan.processingScan')}</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Información sobre el escáner */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+                  <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                    <p className="font-medium">💡 {t('scan.scannerTips')}</p>
+                    <ul className="list-disc list-inside space-y-1 text-xs">
+                      <li>{t('scan.tipStable')}</li>
+                      <li>{t('scan.tipProtection')}</li>
+                      <li>{t('scan.tipCooldown')}</li>
+                    </ul>
                   </div>
-                )}
+                </div>
               </div>
             )}
           </div>

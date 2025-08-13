@@ -123,12 +123,13 @@ const translations = {
     'scan.noItemFound': 'No se encontró ningún artículo con el código:',
     'scan.readyToScan': 'Listo para Escanear',
     'scan.scanToStart': 'Escanea o ingresa un código de barras para comenzar',
-    'scan.autoSearch': 'Búsqueda Automática',
-    'scan.autoSearchEnabled': 'La búsqueda se ejecutará automáticamente después de escanear',
-    'scan.autoSearchDisabled': 'Hacer clic en el botón de buscar para realizar la búsqueda',
-    'scan.autoSearchTooltip': 'Cuando está activado, la búsqueda se ejecuta automáticamente después de escanear un código de barras. Cuando está desactivado, debes hacer clic en el botón de buscar.',
-    'scan.backupButton': 'Búsqueda automática activada - el botón está disponible como respaldo',
     'scan.clickToSearch': 'Hacer clic para buscar',
+    'scan.scannerCooldown': 'Escáner en cooldown - esperando...',
+    'scan.processingScan': 'Procesando escaneo...',
+    'scan.scannerTips': 'Consejos para el escaneo:',
+    'scan.tipStable': 'Mantén el código de barras estable y bien iluminado',
+    'scan.tipProtection': 'El escáner tiene protección contra escaneos múltiples',
+    'scan.tipCooldown': 'Espera 2 segundos entre escaneos del mismo código',
     
     // Configuration View
     'config.title': 'Configuraciones de Escaneo',
@@ -360,6 +361,13 @@ const translations = {
     'scan.noItemFound': 'No item found with code:',
     'scan.readyToScan': 'Ready to Scan',
     'scan.scanToStart': 'Scan or enter a barcode to get started',
+    'scan.clickToSearch': 'Click to search',
+    'scan.scannerCooldown': 'Scanner in cooldown - waiting...',
+    'scan.processingScan': 'Processing scan...',
+    'scan.scannerTips': 'Scanning tips:',
+    'scan.tipStable': 'Keep the barcode stable and well-lit',
+    'scan.tipProtection': 'Scanner has protection against multiple scans',
+    'scan.tipCooldown': 'Wait 2 seconds between scans of the same code',
     
     // Configuration View
     'config.title': 'Scan Configurations',
